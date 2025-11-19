@@ -1,16 +1,12 @@
-# satisfaction.py
+"""Calcul des satisfactions pour étudiants et universités."""
 from typing import Dict, List
 import numpy as np
-from preferences import StudentKey, UniversityKey
+
+from models import StudentKey, UniversityKey
+from config import AlphaCategories
 
 
-ALPHA_ETUDIANT = 0.3
-ALPHA_ETABLISSEMENT = 0.5  # Gardé pour extension éventuelle
-CATEGORIES_ALPHA = {
-    "flexible": 0.3,
-    "moyen": 0.6,
-    "exigeant": 0.9,
-}
+ALPHA_ETUDIANT = AlphaCategories.FLEXIBLE
 
 
 def satisfaction_etudiant(
@@ -20,14 +16,25 @@ def satisfaction_etudiant(
     alpha: float = ALPHA_ETUDIANT,
 ) -> float:
     """
-    Satisfaction exponentielle de l'étudiant :
-        S = exp(-alpha * (rang - 1))
-    rang = 1 → S = 1
+    Calcule la satisfaction exponentielle d'un étudiant.
+    
+    Formule: S = exp(-alpha * (rang - 1))
+    - rang=1 (premier choix) → S = 1.0 (100% satisfait)
+    - rang augmente → S diminue exponentiellement
+    
+    Args:
+        etudiant_key: Nom de l'étudiant
+        preferences_etudiants: Préférences des étudiants
+        affectations: Affectations actuelles
+        alpha: Paramètre de contrôle de la satisfaction
+        
+    Returns:
+        Score de satisfaction entre 0 et 1
     """
     prefs = preferences_etudiants[etudiant_key]
     m = len(prefs)
 
-    # Trouver l'université où l'étudiant est affecté
+    # Trouver l'université d'affectation
     universite_key = None
     for uni, etus in affectations.items():
         if etudiant_key in etus:
@@ -51,10 +58,19 @@ def satisfaction_etablissement(
     affectations: Dict[UniversityKey, List[StudentKey]],
 ) -> float:
     """
-    Satisfaction linéaire de l'université :
-        S = 1 - (rang - 1) / (n - 1)
-    en fonction du rang de l'étudiant affecté.
-    Ici on prend le premier étudiant affecté (capacité = 1 par défaut).
+    Calcule la satisfaction linéaire d'une université.
+    
+    Formule: S = 1 - (rang - 1) / (n - 1)
+    - Le premier étudiant affecté est le plus satisfaisant
+    - La satisfaction décroît linéairement avec le rang
+    
+    Args:
+        universite_key: Nom de l'université
+        preferences_universites: Préférences des universités
+        affectations: Affectations actuelles
+        
+    Returns:
+        Score de satisfaction entre 0 et 1
     """
     prefs = preferences_universites[universite_key]
     affectes = affectations.get(universite_key, [])
@@ -63,6 +79,7 @@ def satisfaction_etablissement(
     if len(affectes) == 0:
         return 0.0
 
+    # Prendre le premier étudiant affecté (capacité=1 par défaut)
     etudiant_key = affectes[0]
 
     if etudiant_key not in prefs:
@@ -83,15 +100,35 @@ def mesurer_satisfaction_globale(
     preferences_universites: Dict[UniversityKey, List[StudentKey]],
     capacites: Dict[UniversityKey, int],
     alpha_etu: float = ALPHA_ETUDIANT,
-):
+) -> Dict:
+    """
+    Calcule la satisfaction globale de tous les acteurs.
+    
+    Args:
+        affectations: Affectations actuelles
+        preferences_etudiants: Préférences des étudiants
+        preferences_universites: Préférences des universités
+        capacites: Capacités des universités
+        alpha_etu: Paramètre alpha pour satisfaction exponentielle
+        
+    Returns:
+        Dictionnaire contenant:
+        - satisfactions_etudiants: {étudiant: score}
+        - satisfactions_universites: {université: score}
+        - moyenne_etudiants: moyenne des satisfactions des étudiants
+        - moyenne_universites: moyenne des satisfactions des universités
+        - alpha_etudiant: paramètre alpha utilisé
+    """
     satisf_etudiants: Dict[StudentKey, float] = {}
     satisf_universites: Dict[UniversityKey, float] = {}
 
+    # Calculer satisfaction par étudiant
     for etu_key in preferences_etudiants:
         satisf_etudiants[etu_key] = satisfaction_etudiant(
             etu_key, preferences_etudiants, affectations, alpha_etu
         )
 
+    # Calculer satisfaction par université
     for uni_key in preferences_universites:
         satisf_universites[uni_key] = satisfaction_etablissement(
             uni_key, preferences_universites, affectations

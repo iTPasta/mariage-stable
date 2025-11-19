@@ -1,11 +1,8 @@
-# preferences.py
+"""Génération des préférences pour étudiants et universités."""
 import random
 from typing import Dict, List
-from models import Student, University
 
-
-StudentKey = str       # full_name de l'étudiant
-UniversityKey = str    # name de l'université
+from models import Student, University, StudentKey, UniversityKey
 
 
 def generer_preferences_etudiants(
@@ -13,8 +10,14 @@ def generer_preferences_etudiants(
     universites: List[University]
 ) -> Dict[StudentKey, List[UniversityKey]]:
     """
-    Pour chaque étudiant, on crée une permutation aléatoire des universités.
-    Clé = full_name, valeurs = liste des names d'universités.
+    Génère les préférences aléatoires pour chaque étudiant.
+    
+    Args:
+        etudiants: Liste des étudiants
+        universites: Liste des universités
+        
+    Returns:
+        Dictionnaire {nom_etudiant: [liste_universites_ordonnees]}
     """
     preferences: Dict[StudentKey, List[UniversityKey]] = {}
     uni_names = [u.name for u in universites]
@@ -32,8 +35,14 @@ def generer_preferences_universites(
     universites: List[University]
 ) -> Dict[UniversityKey, List[StudentKey]]:
     """
-    Pour chaque université, on crée une permutation aléatoire des étudiants.
-    Clé = name, valeurs = liste des full_name étudiants.
+    Génère les préférences aléatoires pour chaque université.
+    
+    Args:
+        etudiants: Liste des étudiants
+        universites: Liste des universités
+        
+    Returns:
+        Dictionnaire {nom_universite: [liste_etudiants_ordonnes]}
     """
     preferences: Dict[UniversityKey, List[StudentKey]] = {}
     etu_names = [e.full_name for e in etudiants]
