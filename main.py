@@ -17,6 +17,7 @@ from ui import (
     demander_parametres_satisfaction,
     menu_principal,
 )
+from gui import afficher_bilan_graphique  # 👈 NOUVEAU : import de la fenêtre graphique
 
 
 DEFAULT_STUDENTS_CSV = "etudiants.csv"
@@ -120,7 +121,7 @@ def main():
         # Capacités : clé = nom de l'université
         capacites: Dict[str, int] = {u.name: u.capacity for u in universites}
 
-        # 4. Affichage des données
+        # 4. Affichage des données (console)
         afficher_donnees(universites, etudiants, prefs_etud, prefs_uni)
 
         input("\n⏎ Appuyez sur Entrée pour lancer l'algorithme d'affectation...")
@@ -129,14 +130,25 @@ def main():
         print("\n⚙️  Exécution de l'algorithme de Gale-Shapley...")
         affectations = algorithme_affectation(prefs_etud, prefs_uni, capacites)
 
-        # 6. Affichage affectations
+        # 6. Affichage affectations (console)
         afficher_affectations(affectations, etudiants, universites, prefs_etud, prefs_uni)
 
-        # 7. Satisfaction
+        # 7. Satisfaction (console)
         print("\n⏳ Calcul des satisfactions...")
         afficher_satisfaction(affectations, etudiants, universites, prefs_etud, prefs_uni, alpha_etu)
 
-        # 8. Menu
+        # 8. Bilan graphique (fenêtre Tkinter)
+        print("\n🪟 Ouverture de la fenêtre de bilan graphique...")
+        afficher_bilan_graphique(
+            affectations,
+            etudiants,
+            universites,
+            prefs_etud,
+            prefs_uni,
+            alpha_etu,
+        )
+
+        # 9. Menu principal (console)
         continuer = menu_principal()
 
 
