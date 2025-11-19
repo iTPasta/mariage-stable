@@ -12,7 +12,6 @@ from models import Student, University, SimulationData
 from preferences import generer_preferences_etudiants, generer_preferences_universites
 from matching import algorithme_affectation
 from satisfaction import mesurer_satisfaction_globale
-from config import AppConfig
 
 __all__ = [
     "Student",
@@ -22,5 +21,4 @@ __all__ = [
     "generer_preferences_universites",
     "algorithme_affectation",
     "mesurer_satisfaction_globale",
-    "AppConfig",
 ]

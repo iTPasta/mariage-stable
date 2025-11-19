@@ -3,10 +3,8 @@ from typing import Dict, List
 import numpy as np
 
 from models import StudentKey, UniversityKey
-from config import AlphaCategories
-
-
-ALPHA_ETUDIANT = AlphaCategories.FLEXIBLE
+# Paramètre alpha par défaut (anciennement dans config.py)
+ALPHA_ETUDIANT = 0.3
 
 
 def satisfaction_etudiant(

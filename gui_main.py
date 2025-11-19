@@ -4,13 +4,41 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import random
 from typing import Optional
+import os
 
 from models import Student, University, SimulationData, StudentKey, UniversityKey
 from data.data_loader import load_students_from_csv, load_universities_from_csv
 from preferences import generer_preferences_etudiants, generer_preferences_universites
 from matching import algorithme_affectation
 from satisfaction import mesurer_satisfaction_globale
-from config import AppConfig
+
+# Constantes locales (remplace config.py)
+class UI:
+    WINDOW_WIDTH = 1400
+    WINDOW_HEIGHT = 900
+    DEFAULT_NB_STUDENTS = 10
+    DEFAULT_NB_UNIVERSITIES = 10
+    BG_COLOR = "#f0f4f8"
+    PRIMARY_COLOR = "#3b82f6"
+    SECONDARY_COLOR = "#10b981"
+    TEXT_COLOR = "#1f2937"
+    WHITE = "white"
+    GRAY = "#6b7280"
+    TITLE_FONT = ("Segoe UI", 24, "bold")
+    SUBTITLE_FONT = ("Segoe UI", 12)
+    HEADER_FONT = ("Segoe UI", 14, "bold")
+    BUTTON_FONT = ("Segoe UI", 11, "bold")
+    TEXT_FONT = ("Segoe UI", 10)
+    SMALL_FONT = ("Segoe UI", 9)
+
+ALPHA_PRESETS = {
+    "flexible": 0.3,
+    "moyen": 0.6,
+    "exigeant": 0.9,
+}
+
+STUDENTS_CSV = os.path.join("data", "etudiants.csv")
+UNIVERSITIES_CSV = os.path.join("data", "universites.csv")
 
 
 class ModernMatchingApp:
@@ -19,8 +47,8 @@ class ModernMatchingApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Algorithme du Mariage Stable - Étudiants/Établissements")
-        self.root.geometry(f"{AppConfig.UI.WINDOW_WIDTH}x{AppConfig.UI.WINDOW_HEIGHT}")
-        self.root.configure(bg=AppConfig.UI.BG_COLOR)
+        self.root.geometry(f"{UI.WINDOW_WIDTH}x{UI.WINDOW_HEIGHT}")
+        self.root.configure(bg=UI.BG_COLOR)
         
         # Gérer la fermeture de la fenêtre
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -53,19 +81,19 @@ class ModernMatchingApp:
         self.root.configure(bg="#f8fafc")
         
         style.configure("Title.TLabel", 
-                       font=AppConfig.UI.TITLE_FONT, 
+                   font=UI.TITLE_FONT, 
                        foreground="#0f172a", 
                        background="#f8fafc")
         style.configure("Subtitle.TLabel", 
-                       font=AppConfig.UI.SUBTITLE_FONT, 
+                   font=UI.SUBTITLE_FONT, 
                        foreground="#475569", 
                        background="#f8fafc")
         style.configure("Header.TLabel", 
-                       font=AppConfig.UI.HEADER_FONT, 
+                   font=UI.HEADER_FONT, 
                        foreground="#0f172a", 
-                       background=AppConfig.UI.WHITE)
+                   background=UI.WHITE)
         style.configure("Modern.TFrame", background="#f8fafc")
-        style.configure("Card.TFrame", background=AppConfig.UI.WHITE, relief="flat", borderwidth=1)
+        style.configure("Card.TFrame", background=UI.WHITE, relief="flat", borderwidth=1)
         
         # Style Notebook moderne
         style.configure("TNotebook", background="#f8fafc", borderwidth=0)
@@ -80,16 +108,16 @@ class ModernMatchingApp:
         
         # Treeview moderne avec gradient
         style.configure("Treeview", 
-                       background=AppConfig.UI.WHITE,
+                   background=UI.WHITE,
                        foreground="#1e293b",
-                       fieldbackground=AppConfig.UI.WHITE,
+                   fieldbackground=UI.WHITE,
                        font=("Segoe UI", 10),
                        rowheight=32,
                        borderwidth=0)
         style.configure("Treeview.Heading", 
                        font=("Segoe UI", 11, "bold"),
                        background="#2563eb",
-                       foreground=AppConfig.UI.WHITE,
+                   foreground=UI.WHITE,
                        relief="flat",
                        borderwidth=0)
         style.map("Treeview.Heading",
@@ -143,9 +171,9 @@ class ModernMatchingApp:
         button_frame.pack(fill="x", side="bottom")
         
         btn = tk.Button(button_frame, text="← NOUVELLE SIMULATION", 
-                       font=(AppConfig.UI.BUTTON_FONT[0], 11, "bold"),
-                       bg="#059669", fg=AppConfig.UI.WHITE,
-                       activebackground="#047857", activeforeground=AppConfig.UI.WHITE,
+                   font=(UI.BUTTON_FONT[0], 11, "bold"),
+                   bg="#059669", fg=UI.WHITE,
+                   activebackground="#047857", activeforeground=UI.WHITE,
                        cursor="hand2", relief="flat", padx=25, pady=12,
                        borderwidth=0, highlightthickness=0,
                        command=self.back_to_config)
@@ -164,30 +192,30 @@ class ModernMatchingApp:
         card.pack(fill="both", expand=True)
         
         ttk.Label(card, text="PARAMÈTRES DE SIMULATION", 
-                 font=(AppConfig.UI.BUTTON_FONT[0], 14, "bold"),
-                 foreground="#0f172a", background=AppConfig.UI.WHITE).grid(
+             font=(UI.BUTTON_FONT[0], 14, "bold"),
+                 foreground="#0f172a", background=UI.WHITE).grid(
             row=0, column=0, columnspan=3, sticky="w", pady=(0, 20))
         
         # Nombre d'étudiants
         row = 1
-        ttk.Label(card, text="Nombre d'étudiants:", font=(AppConfig.UI.TEXT_FONT[0], 11, "bold"), 
-                 foreground="#334155", background=AppConfig.UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
-        self.nb_students_var = tk.IntVar(value=AppConfig.UI.DEFAULT_NB_STUDENTS)
+        ttk.Label(card, text="Nombre d'étudiants:", font=(UI.TEXT_FONT[0], 11, "bold"), 
+                 foreground="#334155", background=UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
+        self.nb_students_var = tk.IntVar(value=UI.DEFAULT_NB_STUDENTS)
         ttk.Spinbox(card, from_=1, to=100, textvariable=self.nb_students_var, width=15).grid(
             row=row, column=1, sticky="w", pady=10)
-        self.students_info = ttk.Label(card, text="", font=AppConfig.UI.SMALL_FONT, 
-                                       foreground=AppConfig.UI.GRAY, background=AppConfig.UI.WHITE)
+        self.students_info = ttk.Label(card, text="", font=UI.SMALL_FONT, 
+                           foreground=UI.GRAY, background=UI.WHITE)
         self.students_info.grid(row=row, column=2, sticky="w", padx=10)
         
         # Nombre d'établissements
         row += 1
-        ttk.Label(card, text="Nombre d'établissements:", font=(AppConfig.UI.TEXT_FONT[0], 11, "bold"), 
-                 foreground="#334155", background=AppConfig.UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
-        self.nb_universities_var = tk.IntVar(value=AppConfig.UI.DEFAULT_NB_UNIVERSITIES)
+        ttk.Label(card, text="Nombre d'établissements:", font=(UI.TEXT_FONT[0], 11, "bold"), 
+                 foreground="#334155", background=UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
+        self.nb_universities_var = tk.IntVar(value=UI.DEFAULT_NB_UNIVERSITIES)
         ttk.Spinbox(card, from_=1, to=100, textvariable=self.nb_universities_var, width=15).grid(
             row=row, column=1, sticky="w", pady=10)
-        self.universities_info = ttk.Label(card, text="", font=AppConfig.UI.SMALL_FONT, 
-                                          foreground=AppConfig.UI.GRAY, background=AppConfig.UI.WHITE)
+        self.universities_info = ttk.Label(card, text="", font=UI.SMALL_FONT, 
+                          foreground=UI.GRAY, background=UI.WHITE)
         self.universities_info.grid(row=row, column=2, sticky="w", padx=10)
         
         # Séparateur
@@ -196,15 +224,15 @@ class ModernMatchingApp:
         
         # Paramètre Alpha
         row += 1
-        ttk.Label(card, text="Satisfaction étudiants (α):", font=(AppConfig.UI.TEXT_FONT[0], 11, "bold"), 
-                 foreground="#334155", background=AppConfig.UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
+        ttk.Label(card, text="Satisfaction étudiants (α):", font=(UI.TEXT_FONT[0], 11, "bold"), 
+             foreground="#334155", background=UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
         
         self.alpha_var = tk.StringVar(value="flexible")
         self.custom_alpha_var = tk.StringVar()
         alpha_frame = ttk.Frame(card, style="Card.TFrame")
         alpha_frame.grid(row=row, column=1, columnspan=2, sticky="w", pady=10)
         
-        for i, (name, value) in enumerate(AppConfig.ALPHA.get_all().items()):
+        for i, (name, value) in enumerate(ALPHA_PRESETS.items()):
             ttk.Radiobutton(alpha_frame, text=f"{name.capitalize()} (α={value})", 
                            variable=self.alpha_var, value=name).pack(anchor="w", pady=2)
         
@@ -221,8 +249,8 @@ class ModernMatchingApp:
         desc_frame.grid(row=row, column=0, columnspan=3, sticky="ew", pady=(20, 0))
         
         ttk.Label(desc_frame, 
-                 text="ℹ️ Le paramètre α contrôle la satisfaction exponentielle. Plus α est élevé, plus les étudiants préfèrent leurs premiers choix.",
-                 font=AppConfig.UI.SMALL_FONT, foreground=AppConfig.UI.GRAY, background=AppConfig.UI.WHITE,
+             text="ℹ️ Le paramètre α contrôle la satisfaction exponentielle. Plus α est élevé, plus les étudiants préfèrent leurs premiers choix.",
+             font=UI.SMALL_FONT, foreground=UI.GRAY, background=UI.WHITE,
                  wraplength=700, justify="left").pack(anchor="w")
         
         # Bouton
@@ -231,17 +259,17 @@ class ModernMatchingApp:
         button_frame.grid(row=row, column=0, columnspan=3, pady=(30, 0))
         
         self.run_button = tk.Button(button_frame, text="LANCER LA SIMULATION", 
-                                    font=(AppConfig.UI.BUTTON_FONT[0], 12, "bold"),
-                                    bg="#16a34a", fg=AppConfig.UI.WHITE, 
-                                    activebackground="#15803d", activeforeground=AppConfig.UI.WHITE,
+                        font=(UI.BUTTON_FONT[0], 12, "bold"),
+                        bg="#16a34a", fg=UI.WHITE, 
+                        activebackground="#15803d", activeforeground=UI.WHITE,
                                     cursor="hand2", relief="flat", padx=40, pady=18,
                                     borderwidth=0, highlightthickness=0,
                                     command=self.run_simulation)
         self.run_button.pack()
         
         # Status
-        self.status_label = ttk.Label(card, text="", font=AppConfig.UI.TEXT_FONT, 
-                                     foreground=AppConfig.UI.SECONDARY_COLOR, background=AppConfig.UI.WHITE)
+        self.status_label = ttk.Label(card, text="", font=UI.TEXT_FONT, 
+                         foreground=UI.SECONDARY_COLOR, background=UI.WHITE)
         self.status_label.grid(row=row+1, column=0, columnspan=3, pady=(10, 0))
     
     def create_results_tab(self):
@@ -261,8 +289,8 @@ class ModernMatchingApp:
         stats_card.pack(fill="x", pady=(0, 15))
         
         ttk.Label(stats_card, text="STATISTIQUES GLOBALES", 
-                 font=(AppConfig.UI.BUTTON_FONT[0], 14, "bold"),
-                 foreground="#0f172a", background=AppConfig.UI.WHITE).pack(
+             font=(UI.BUTTON_FONT[0], 14, "bold"),
+             foreground="#0f172a", background=UI.WHITE).pack(
             anchor="w", pady=(0, 15))
         
         stats_grid = ttk.Frame(stats_card, style="Card.TFrame")
@@ -280,11 +308,11 @@ class ModernMatchingApp:
         
         for i, (key, label, default) in enumerate(stats_info):
             row, col = i // 3, (i % 3) * 2
-            ttk.Label(stats_grid, text=label + ":", font=AppConfig.UI.TEXT_FONT, 
-                     background=AppConfig.UI.WHITE).grid(row=row, column=col, sticky="w", padx=10, pady=8)
+            ttk.Label(stats_grid, text=label + ":", font=UI.TEXT_FONT, 
+                     background=UI.WHITE).grid(row=row, column=col, sticky="w", padx=10, pady=8)
             self.stat_labels[key] = ttk.Label(stats_grid, text=default, 
-                                             font=(AppConfig.UI.BUTTON_FONT[0], 10, "bold"), 
-                                             foreground=AppConfig.UI.PRIMARY_COLOR, background=AppConfig.UI.WHITE)
+                                             font=(UI.BUTTON_FONT[0], 10, "bold"), 
+                                             foreground=UI.PRIMARY_COLOR, background=UI.WHITE)
             self.stat_labels[key].grid(row=row, column=col+1, sticky="w", padx=10, pady=8)
         
         # Préférences - deux tableaux côte à côte
@@ -292,8 +320,8 @@ class ModernMatchingApp:
         prefs_card.pack(fill="both", expand=True)
         
         ttk.Label(prefs_card, text="CHOIX ORDONNÉS DES PRÉFÉRENCES", 
-                 font=(AppConfig.UI.BUTTON_FONT[0], 14, "bold"),
-                 foreground="#0f172a", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 15))
+             font=(UI.BUTTON_FONT[0], 14, "bold"),
+             foreground="#0f172a", background=UI.WHITE).pack(anchor="w", pady=(0, 15))
         
         columns_frame = ttk.Frame(prefs_card, style="Card.TFrame")
         columns_frame.pack(fill="both", expand=True)
@@ -303,8 +331,8 @@ class ModernMatchingApp:
         left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
         ttk.Label(left_frame, text="Classement des établissements par les étudiants", 
-                 font=(AppConfig.UI.BUTTON_FONT[0], 11, "bold"),
-                 foreground="#1e40af", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 8))
+             font=(UI.BUTTON_FONT[0], 11, "bold"),
+             foreground="#1e40af", background=UI.WHITE).pack(anchor="w", pady=(0, 8))
         
         self.students_prefs_tree = self.create_tree(
             left_frame,
@@ -318,8 +346,8 @@ class ModernMatchingApp:
         right_frame.pack(side="left", fill="both", expand=True, padx=(10, 0))
         
         ttk.Label(right_frame, text="Classement des étudiants par les établissements", 
-                 font=(AppConfig.UI.BUTTON_FONT[0], 11, "bold"),
-                 foreground="#1e40af", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 8))
+             font=(UI.BUTTON_FONT[0], 11, "bold"),
+             foreground="#1e40af", background=UI.WHITE).pack(anchor="w", pady=(0, 8))
         
         self.universities_prefs_tree = self.create_tree(
             right_frame,
@@ -343,8 +371,8 @@ class ModernMatchingApp:
         card.pack(fill="both", expand=True)
         
         ttk.Label(card, text="TOUS LES ÉTUDIANTS", 
-                 font=(AppConfig.UI.BUTTON_FONT[0], 14, "bold"),
-                 foreground="#0f172a", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 15))
+             font=(UI.BUTTON_FONT[0], 14, "bold"),
+             foreground="#0f172a", background=UI.WHITE).pack(anchor="w", pady=(0, 15))
         
         self.students_tree = self.create_tree(
             card,
@@ -368,8 +396,8 @@ class ModernMatchingApp:
         card.pack(fill="both", expand=True)
         
         ttk.Label(card, text="TOUS LES ÉTABLISSEMENTS", 
-                 font=(AppConfig.UI.BUTTON_FONT[0], 14, "bold"),
-                 foreground="#0f172a", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 15))
+             font=(UI.BUTTON_FONT[0], 14, "bold"),
+             foreground="#0f172a", background=UI.WHITE).pack(anchor="w", pady=(0, 15))
         
         self.universities_tree = self.create_tree(
             card,
@@ -390,8 +418,8 @@ class ModernMatchingApp:
         card.pack(fill="both", expand=True)
         
         ttk.Label(card, text="AFFECTATIONS DÉTAILLÉES", 
-                 font=(AppConfig.UI.BUTTON_FONT[0], 14, "bold"),
-                 foreground="#0f172a", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 15))
+             font=(UI.BUTTON_FONT[0], 14, "bold"),
+             foreground="#0f172a", background=UI.WHITE).pack(anchor="w", pady=(0, 15))
         
         self.assignments_tree = self.create_tree(
             card,
@@ -423,23 +451,23 @@ class ModernMatchingApp:
             tree.column(col, width=width)
         
         tree.tag_configure('oddrow', background='#f9fafb')
-        tree.tag_configure('evenrow', background=AppConfig.UI.WHITE)
+        tree.tag_configure('evenrow', background=UI.WHITE)
         
         return tree
     
     def load_data(self):
         """Charge les données depuis les CSV."""
         try:
-            self.all_students = load_students_from_csv(AppConfig.DATA.STUDENTS_CSV)
-            self.all_universities = load_universities_from_csv(AppConfig.DATA.UNIVERSITIES_CSV)
+            self.all_students = load_students_from_csv(STUDENTS_CSV)
+            self.all_universities = load_universities_from_csv(UNIVERSITIES_CSV)
             
             self.students_info.config(text=f"({len(self.all_students)} disponibles)")
             self.universities_info.config(text=f"({len(self.all_universities)} disponibles)")
             
             if self.all_students:
-                self.nb_students_var.set(min(AppConfig.UI.DEFAULT_NB_STUDENTS, len(self.all_students)))
+                self.nb_students_var.set(min(UI.DEFAULT_NB_STUDENTS, len(self.all_students)))
             if self.all_universities:
-                self.nb_universities_var.set(min(AppConfig.UI.DEFAULT_NB_UNIVERSITIES, len(self.all_universities)))
+                self.nb_universities_var.set(min(UI.DEFAULT_NB_UNIVERSITIES, len(self.all_universities)))
                 
         except Exception as e:
             messagebox.showerror("Erreur", f"Impossible de charger les données:\n{str(e)}")
@@ -477,7 +505,7 @@ class ModernMatchingApp:
                     self.run_button.config(state="normal")
                     return
             else:
-                alpha_map = AppConfig.ALPHA.get_all()
+                alpha_map = ALPHA_PRESETS
                 alpha = alpha_map[self.alpha_var.get()]
             
             # Générer les préférences
