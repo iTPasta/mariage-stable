@@ -18,7 +18,7 @@ class ModernMatchingApp:
     
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("🎓 Système d'Affectation - Mariage Stable")
+        self.root.title("Algorithme du Mariage Stable - Étudiants/Établissements")
         self.root.geometry(f"{AppConfig.UI.WINDOW_WIDTH}x{AppConfig.UI.WINDOW_HEIGHT}")
         self.root.configure(bg=AppConfig.UI.BG_COLOR)
         
@@ -49,50 +49,83 @@ class ModernMatchingApp:
         style = ttk.Style()
         style.theme_use('clam')
         
+        # Couleurs modernes
+        self.root.configure(bg="#f8fafc")
+        
         style.configure("Title.TLabel", 
                        font=AppConfig.UI.TITLE_FONT, 
-                       foreground=AppConfig.UI.PRIMARY_COLOR, 
-                       background=AppConfig.UI.BG_COLOR)
+                       foreground="#0f172a", 
+                       background="#f8fafc")
         style.configure("Subtitle.TLabel", 
                        font=AppConfig.UI.SUBTITLE_FONT, 
-                       foreground=AppConfig.UI.TEXT_COLOR, 
-                       background=AppConfig.UI.BG_COLOR)
+                       foreground="#475569", 
+                       background="#f8fafc")
         style.configure("Header.TLabel", 
                        font=AppConfig.UI.HEADER_FONT, 
-                       foreground=AppConfig.UI.TEXT_COLOR, 
+                       foreground="#0f172a", 
                        background=AppConfig.UI.WHITE)
-        style.configure("Modern.TFrame", background=AppConfig.UI.BG_COLOR)
-        style.configure("Card.TFrame", background=AppConfig.UI.WHITE, relief="flat")
+        style.configure("Modern.TFrame", background="#f8fafc")
+        style.configure("Card.TFrame", background=AppConfig.UI.WHITE, relief="flat", borderwidth=1)
         
-        # Treeview moderne
+        # Style Notebook moderne
+        style.configure("TNotebook", background="#f8fafc", borderwidth=0)
+        style.configure("TNotebook.Tab", 
+                       font=("Segoe UI", 10, "bold"),
+                       padding=[20, 10],
+                       background="#e2e8f0",
+                       foreground="#475569")
+        style.map("TNotebook.Tab",
+                 background=[("selected", "#3b82f6")],
+                 foreground=[("selected", "white")])
+        
+        # Treeview moderne avec gradient
         style.configure("Treeview", 
                        background=AppConfig.UI.WHITE,
                        foreground="#1e293b",
                        fieldbackground=AppConfig.UI.WHITE,
-                       font=(AppConfig.UI.TEXT_FONT[0], 10),
-                       rowheight=28)
+                       font=("Segoe UI", 10),
+                       rowheight=32,
+                       borderwidth=0)
         style.configure("Treeview.Heading", 
-                       font=(AppConfig.UI.BUTTON_FONT[0], 10, "bold"),
-                       background="#1e40af",
+                       font=("Segoe UI", 11, "bold"),
+                       background="#2563eb",
                        foreground=AppConfig.UI.WHITE,
-                       relief="flat")
+                       relief="flat",
+                       borderwidth=0)
         style.map("Treeview.Heading",
-                 background=[("active", "#1e3a8a")])
+                 background=[("active", "#1d4ed8")])
+        style.map("Treeview",
+                 background=[("selected", "#dbeafe")],
+                 foreground=[("selected", "#1e293b")])
     
     def create_widgets(self):
         """Crée l'interface utilisateur."""
         main_container = ttk.Frame(self.root, style="Modern.TFrame")
         main_container.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # En-tête
-        header_frame = ttk.Frame(main_container, style="Modern.TFrame")
-        header_frame.pack(fill="x", pady=(0, 20))
+        # En-tête moderne avec dégradé
+        header_frame = tk.Frame(main_container, bg="#ffffff", relief="flat", borderwidth=0)
+        header_frame.pack(fill="x", pady=(0, 25))
         
-        title_label = tk.Label(header_frame, text="SYSTÈME D'AFFECTATION PAR MARIAGE STABLE", 
-                              font=("Segoe UI", 22, "bold"), fg="#0f172a", bg=AppConfig.UI.BG_COLOR)
+        # Barre de couleur en haut
+        top_bar = tk.Frame(header_frame, bg="#3b82f6", height=4)
+        top_bar.pack(fill="x")
+        
+        # Contenu de l'en-tête
+        content = tk.Frame(header_frame, bg="#ffffff")
+        content.pack(fill="x", padx=30, pady=20)
+        
+        title_label = tk.Label(content, text="⚡ ALGORITHME DU MARIAGE STABLE", 
+                              font=("Segoe UI", 26, "bold"), fg="#1e40af", bg="#ffffff")
         title_label.pack()
-        ttk.Label(header_frame, text="Algorithme de Gale-Shapley avec satisfaction exponentielle", 
-                 style="Subtitle.TLabel").pack()
+        
+        subtitle = tk.Label(content, text="Affectation Étudiants-Établissements | Algorithme de Gale-Shapley",
+                           font=("Segoe UI", 12), fg="#64748b", bg="#ffffff")
+        subtitle.pack(pady=(5, 0))
+        
+        desc = tk.Label(content, text="📊 Analyse de satisfaction avec paramètre α configurable", 
+                       font=("Segoe UI", 10), fg="#94a3b8", bg="#ffffff")
+        desc.pack(pady=(3, 0))
         
         # Notebook
         self.notebook = ttk.Notebook(main_container)
@@ -125,7 +158,7 @@ class ModernMatchingApp:
     def create_config_tab(self):
         """Crée l'onglet de configuration."""
         config_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=20)
-        self.notebook.add(config_frame, text="CONFIGURATION")
+        self.notebook.add(config_frame, text="⚙️ Paramètres")
         
         card = ttk.Frame(config_frame, style="Card.TFrame", padding=30)
         card.pack(fill="both", expand=True)
@@ -146,9 +179,9 @@ class ModernMatchingApp:
                                        foreground=AppConfig.UI.GRAY, background=AppConfig.UI.WHITE)
         self.students_info.grid(row=row, column=2, sticky="w", padx=10)
         
-        # Nombre d'universités
+        # Nombre d'établissements
         row += 1
-        ttk.Label(card, text="Nombre d'universités:", font=(AppConfig.UI.TEXT_FONT[0], 11, "bold"), 
+        ttk.Label(card, text="Nombre d'établissements:", font=(AppConfig.UI.TEXT_FONT[0], 11, "bold"), 
                  foreground="#334155", background=AppConfig.UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
         self.nb_universities_var = tk.IntVar(value=AppConfig.UI.DEFAULT_NB_UNIVERSITIES)
         ttk.Spinbox(card, from_=1, to=100, textvariable=self.nb_universities_var, width=15).grid(
@@ -167,12 +200,20 @@ class ModernMatchingApp:
                  foreground="#334155", background=AppConfig.UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
         
         self.alpha_var = tk.StringVar(value="flexible")
+        self.custom_alpha_var = tk.StringVar()
         alpha_frame = ttk.Frame(card, style="Card.TFrame")
         alpha_frame.grid(row=row, column=1, columnspan=2, sticky="w", pady=10)
         
         for i, (name, value) in enumerate(AppConfig.ALPHA.get_all().items()):
             ttk.Radiobutton(alpha_frame, text=f"{name.capitalize()} (α={value})", 
                            variable=self.alpha_var, value=name).pack(anchor="w", pady=2)
+        
+        # Option personnalisée
+        custom_frame = ttk.Frame(alpha_frame, style="Card.TFrame")
+        custom_frame.pack(anchor="w", pady=2)
+        ttk.Radiobutton(custom_frame, text="Personnalisé:", 
+                       variable=self.alpha_var, value="custom").pack(side="left")
+        ttk.Entry(custom_frame, textvariable=self.custom_alpha_var, width=10).pack(side="left", padx=5)
         
         # Description
         row += 1
@@ -206,7 +247,7 @@ class ModernMatchingApp:
     def create_results_tab(self):
         """Crée l'onglet de résultats."""
         results_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=20)
-        self.notebook.add(results_frame, text="VUE D'ENSEMBLE")
+        self.notebook.add(results_frame, text="📊 Résultats Globaux")
         
         # Container pour le contenu
         content_frame = ttk.Frame(results_frame, style="Modern.TFrame")
@@ -229,12 +270,12 @@ class ModernMatchingApp:
         
         self.stat_labels = {}
         stats_info = [
-            ("students", "Étudiants", "0"),
-            ("universities", "Universités", "0"),
-            ("assigned", "Affectés", "0 / 0"),
+            ("students", "Nombre d'étudiants", "0"),
+            ("universities", "Nombre d'établissements", "0"),
+            ("assigned", "Étudiants affectés", "0 / 0"),
             ("unassigned", "Non affectés", "0"),
-            ("avg_students", "Satisf. Moy. Étudiants", "0%"),
-            ("avg_universities", "Satisf. Moy. Universités", "0%"),
+            ("avg_students", "Satisfaction moyenne étudiants", "0%"),
+            ("avg_universities", "Satisfaction moyenne établissements", "0%"),
         ]
         
         for i, (key, label, default) in enumerate(stats_info):
@@ -250,7 +291,7 @@ class ModernMatchingApp:
         prefs_card = ttk.Frame(cards_container, style="Card.TFrame", padding=20)
         prefs_card.pack(fill="both", expand=True)
         
-        ttk.Label(prefs_card, text="PRÉFÉRENCES ET PRIORITÉS", 
+        ttk.Label(prefs_card, text="CHOIX ORDONNÉS DES PRÉFÉRENCES", 
                  font=(AppConfig.UI.BUTTON_FONT[0], 14, "bold"),
                  foreground="#0f172a", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 15))
         
@@ -261,30 +302,30 @@ class ModernMatchingApp:
         left_frame = ttk.Frame(columns_frame, style="Card.TFrame")
         left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
-        ttk.Label(left_frame, text="Choix des Étudiants", 
+        ttk.Label(left_frame, text="Classement des établissements par les étudiants", 
                  font=(AppConfig.UI.BUTTON_FONT[0], 11, "bold"),
                  foreground="#1e40af", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 8))
         
         self.students_prefs_tree = self.create_tree(
             left_frame,
             columns=("num", "name", "prefs"),
-            headings=("#", "Étudiant", "Choix"),
-            widths=(40, 150, 1200)
+            headings=("#", "Étudiant", "Choix d'établissements"),
+            widths=(40, 180, 420)
         )
         
         # Priorités universités (droite)
         right_frame = ttk.Frame(columns_frame, style="Card.TFrame")
         right_frame.pack(side="left", fill="both", expand=True, padx=(10, 0))
         
-        ttk.Label(right_frame, text="Priorités des Universités", 
+        ttk.Label(right_frame, text="Classement des étudiants par les établissements", 
                  font=(AppConfig.UI.BUTTON_FONT[0], 11, "bold"),
                  foreground="#1e40af", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 8))
         
         self.universities_prefs_tree = self.create_tree(
             right_frame,
             columns=("num", "name", "prefs"),
-            headings=("#", "Université", "Priorités"),
-            widths=(40, 250, 1200)
+            headings=("#", "Établissement", "Priorités"),
+            widths=(40, 260, 340)
         )
         
         # Ajouter le bouton de nouvelle simulation
@@ -293,7 +334,7 @@ class ModernMatchingApp:
     def create_students_tab(self):
         """Crée l'onglet étudiants."""
         students_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=20)
-        self.notebook.add(students_frame, text="ÉTUDIANTS")
+        self.notebook.add(students_frame, text="🎓 Étudiants")
         
         content_frame = ttk.Frame(students_frame, style="Modern.TFrame")
         content_frame.pack(fill="both", expand=True, pady=(0, 10))
@@ -308,7 +349,7 @@ class ModernMatchingApp:
         self.students_tree = self.create_tree(
             card,
             columns=("name", "university", "wish", "satisfaction"),
-            headings=("Étudiant", "Université affectée", "Vœu", "Satisfaction"),
+            headings=("Étudiant", "Établissement affecté", "Vœu", "Satisfaction"),
             widths=(220, 350, 80, 120)
         )
         
@@ -318,7 +359,7 @@ class ModernMatchingApp:
     def create_universities_tab(self):
         """Crée l'onglet universités."""
         universities_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=20)
-        self.notebook.add(universities_frame, text="UNIVERSITÉS")
+        self.notebook.add(universities_frame, text="🏛️ Établissements")
         
         content_frame = ttk.Frame(universities_frame, style="Modern.TFrame")
         content_frame.pack(fill="both", expand=True, pady=(0, 10))
@@ -326,14 +367,14 @@ class ModernMatchingApp:
         card = ttk.Frame(content_frame, style="Card.TFrame", padding=20)
         card.pack(fill="both", expand=True)
         
-        ttk.Label(card, text="TOUTES LES UNIVERSITÉS", 
+        ttk.Label(card, text="TOUS LES ÉTABLISSEMENTS", 
                  font=(AppConfig.UI.BUTTON_FONT[0], 14, "bold"),
                  foreground="#0f172a", background=AppConfig.UI.WHITE).pack(anchor="w", pady=(0, 15))
         
         self.universities_tree = self.create_tree(
             card,
             columns=("name", "capacity", "assigned", "satisfaction", "students"),
-            headings=("Université", "Capacité", "Affectés", "Satisfaction", "Étudiants"),
+            headings=("Établissement", "Capacité", "Affectés", "Satisfaction", "Étudiants"),
             widths=(300, 80, 80, 120, 380)
         )
         
@@ -343,7 +384,7 @@ class ModernMatchingApp:
     def create_assignments_tab(self):
         """Crée l'onglet affectations détaillées."""
         assignments_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=20)
-        self.notebook.add(assignments_frame, text="AFFECTATIONS")
+        self.notebook.add(assignments_frame, text="✓ Affectations Détaillées")
         
         card = ttk.Frame(assignments_frame, style="Card.TFrame", padding=20)
         card.pack(fill="both", expand=True)
@@ -355,7 +396,7 @@ class ModernMatchingApp:
         self.assignments_tree = self.create_tree(
             card,
             columns=("university", "student", "wish", "priority"),
-            headings=("Université", "Étudiant", "Vœu étudiant", "Priorité université"),
+            headings=("Établissement", "Étudiant", "Vœu étudiant", "Priorité établissement"),
             widths=(350, 220, 120, 160)
         )
     
@@ -422,8 +463,22 @@ class ModernMatchingApp:
             selected_universities = random.sample(self.all_universities, nb_universities)
             
             # Alpha
-            alpha_map = AppConfig.ALPHA.get_all()
-            alpha = alpha_map[self.alpha_var.get()]
+            # Alpha : priorité à la valeur personnalisée si valide
+            if self.alpha_var.get() == "custom":
+                custom_alpha = self.custom_alpha_var.get().strip()
+                try:
+                    alpha = float(custom_alpha)
+                    if not (0 < alpha <= 1):
+                        messagebox.showerror("Erreur", "Alpha doit être entre 0 et 1")
+                        self.run_button.config(state="normal")
+                        return
+                except ValueError:
+                    messagebox.showerror("Erreur", "Veuillez saisir une valeur numérique valide pour alpha")
+                    self.run_button.config(state="normal")
+                    return
+            else:
+                alpha_map = AppConfig.ALPHA.get_all()
+                alpha = alpha_map[self.alpha_var.get()]
             
             # Générer les préférences
             prefs_etud = generer_preferences_etudiants(selected_students, selected_universities)
