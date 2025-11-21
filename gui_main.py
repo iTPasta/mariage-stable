@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Interface graphique moderne pour le système d'affectation."""
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import random
-from typing import Optional
+from typing import Optional, List, Dict
 import os
+import csv
+from datetime import datetime
+import time
 
 from models import Student, University, SimulationData, StudentKey, UniversityKey
 from data.data_loader import load_students_from_csv, load_universities_from_csv
@@ -57,6 +60,7 @@ class ModernMatchingApp:
         self.all_students = []
         self.all_universities = []
         self.simulation_data: Optional[SimulationData] = None
+        self.multi_test_results: List[Dict] = []
         
         # Style
         self.setup_styles()
@@ -164,6 +168,7 @@ class ModernMatchingApp:
         self.create_students_tab()
         self.create_universities_tab()
         self.create_assignments_tab()
+        self.create_multi_test_tab()
     
     def add_new_simulation_button(self, parent):
         """Ajoute un bouton 'Nouvelle simulation' en bas de l'onglet."""
@@ -201,7 +206,7 @@ class ModernMatchingApp:
         ttk.Label(card, text="Nombre d'étudiants:", font=(UI.TEXT_FONT[0], 11, "bold"), 
                  foreground="#334155", background=UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
         self.nb_students_var = tk.IntVar(value=UI.DEFAULT_NB_STUDENTS)
-        ttk.Spinbox(card, from_=1, to=100, textvariable=self.nb_students_var, width=15).grid(
+        ttk.Spinbox(card, from_=1, to=1000, textvariable=self.nb_students_var, width=15).grid(
             row=row, column=1, sticky="w", pady=10)
         self.students_info = ttk.Label(card, text="", font=UI.SMALL_FONT, 
                            foreground=UI.GRAY, background=UI.WHITE)
@@ -212,7 +217,7 @@ class ModernMatchingApp:
         ttk.Label(card, text="Nombre d'établissements:", font=(UI.TEXT_FONT[0], 11, "bold"), 
                  foreground="#334155", background=UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
         self.nb_universities_var = tk.IntVar(value=UI.DEFAULT_NB_UNIVERSITIES)
-        ttk.Spinbox(card, from_=1, to=100, textvariable=self.nb_universities_var, width=15).grid(
+        ttk.Spinbox(card, from_=1, to=1000, textvariable=self.nb_universities_var, width=15).grid(
             row=row, column=1, sticky="w", pady=10)
         self.universities_info = ttk.Label(card, text="", font=UI.SMALL_FONT, 
                           foreground=UI.GRAY, background=UI.WHITE)
@@ -362,7 +367,7 @@ class ModernMatchingApp:
     def create_students_tab(self):
         """Crée l'onglet étudiants."""
         students_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=20)
-        self.notebook.add(students_frame, text="🎓 Étudiants")
+        self.notebook.add(students_frame, text="🎓 Sat. Étudiants")
         
         content_frame = ttk.Frame(students_frame, style="Modern.TFrame")
         content_frame.pack(fill="both", expand=True, pady=(0, 10))
@@ -387,7 +392,7 @@ class ModernMatchingApp:
     def create_universities_tab(self):
         """Crée l'onglet universités."""
         universities_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=20)
-        self.notebook.add(universities_frame, text="🏛️ Établissements")
+        self.notebook.add(universities_frame, text="🏛️ Sat. Établissements")
         
         content_frame = ttk.Frame(universities_frame, style="Modern.TFrame")
         content_frame.pack(fill="both", expand=True, pady=(0, 10))
@@ -401,9 +406,9 @@ class ModernMatchingApp:
         
         self.universities_tree = self.create_tree(
             card,
-            columns=("name", "capacity", "assigned", "satisfaction", "students"),
-            headings=("Établissement", "Capacité", "Affectés", "Satisfaction", "Étudiants"),
-            widths=(300, 80, 80, 120, 380)
+            columns=("name", "student", "rank", "satisfaction"),
+            headings=("Établissement", "Étudiant", "Rang", "Satisfaction"),
+            widths=(300, 300, 100, 150)
         )
         
         # Ajouter le bouton de nouvelle simulation
@@ -601,15 +606,32 @@ class ModernMatchingApp:
         
         # Toutes les universités
         self.clear_tree(self.universities_tree)
-        for i, university in enumerate(data.universities):
+        row_index = 0
+        for university in data.universities:
             uni_name = university.name
             sat = data.satisfaction_stats["satisfactions_universites"].get(uni_name, 0.0)
             etus = data.assignments.get(uni_name, [])
-            etus_str = ", ".join(etus) if etus else "Aucun"
-            tag = 'evenrow' if i % 2 == 0 else 'oddrow'
-            self.universities_tree.insert("", "end", 
-                values=(uni_name, university.capacity, len(etus), f"{sat:.1%}", etus_str),
-                tags=(tag,))
+            prefs_uni = data.preferences_universities.get(uni_name, [])
+            
+            if etus:
+                # Afficher une ligne par étudiant affecté avec son rang
+                for etu_name in etus:
+                    if etu_name in prefs_uni:
+                        rang = prefs_uni.index(etu_name) + 1
+                    else:
+                        rang = "?"
+                    tag = 'evenrow' if row_index % 2 == 0 else 'oddrow'
+                    self.universities_tree.insert("", "end", 
+                        values=(uni_name, etu_name, f"{rang}°", f"{sat:.1%}"),
+                        tags=(tag,))
+                    row_index += 1
+            else:
+                # Si aucun étudiant affecté, afficher une ligne vide
+                tag = 'evenrow' if row_index % 2 == 0 else 'oddrow'
+                self.universities_tree.insert("", "end", 
+                    values=(uni_name, "Aucun", "-", f"{sat:.1%}"),
+                    tags=(tag,))
+                row_index += 1
         
         # Affectations détaillées
         self.clear_tree(self.assignments_tree)
@@ -628,6 +650,321 @@ class ModernMatchingApp:
         """Vide un tableau."""
         for item in tree.get_children():
             tree.delete(item)
+    
+    def create_multi_test_tab(self):
+        """Crée l'onglet de tests multiples."""
+        multi_test_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=20)
+        self.notebook.add(multi_test_frame, text="🧪 Tests Multiples")
+        
+        # Container pour le contenu avec grille
+        content_frame = ttk.Frame(multi_test_frame, style="Modern.TFrame")
+        content_frame.pack(fill="both", expand=True)
+        content_frame.grid_rowconfigure(1, weight=10)  # Tableau prend 10 fois plus d'espace
+        content_frame.grid_columnconfigure(0, weight=1)
+        
+        # Card de configuration (compacte)
+        config_card = ttk.Frame(content_frame, style="Card.TFrame", padding=15)
+        config_card.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        
+        ttk.Label(config_card, text="CONFIGURATION - TESTS DE PERFORMANCE", 
+             font=(UI.BUTTON_FONT[0], 12, "bold"),
+             foreground="#0f172a", background=UI.WHITE).pack(anchor="w", pady=(0, 5))
+        
+        ttk.Label(config_card, text="Mesure le temps d'exécution et la complexité avec différentes tailles", 
+             font=UI.SMALL_FONT, foreground=UI.GRAY, background=UI.WHITE).pack(anchor="w", pady=(0, 10))
+        
+        # Grille de configuration (compacte)
+        config_grid = ttk.Frame(config_card, style="Card.TFrame")
+        config_grid.pack(fill="x")
+        
+        # Mode de test
+        ttk.Label(config_grid, text="Mode:", font=(UI.TEXT_FONT[0], 10, "bold"), 
+                 background=UI.WHITE).grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        self.test_mode_var = tk.StringVar(value="simple")
+        
+        mode_frame = ttk.Frame(config_grid, style="Card.TFrame")
+        mode_frame.grid(row=0, column=1, columnspan=2, sticky="w", pady=5)
+        ttk.Radiobutton(mode_frame, text="Taille fixe", variable=self.test_mode_var, 
+                       value="simple", command=self.toggle_test_mode).pack(side="left", padx=(0, 10))
+        ttk.Radiobutton(mode_frame, text="Scalabilité", variable=self.test_mode_var, 
+                       value="scalability", command=self.toggle_test_mode).pack(side="left")
+        
+        # Ligne unique pour les options
+        options_frame = ttk.Frame(config_grid, style="Card.TFrame")
+        options_frame.grid(row=1, column=0, columnspan=3, sticky="ew", pady=5)
+        
+        # Options pour mode simple
+        self.simple_frame = ttk.Frame(options_frame, style="Card.TFrame")
+        self.simple_frame.pack(side="left", fill="x", expand=True)
+        
+        ttk.Label(self.simple_frame, text="Étudiants:", font=UI.TEXT_FONT, 
+                 background=UI.WHITE).pack(side="left", padx=(10, 5))
+        self.multi_nb_students_var = tk.IntVar(value=100)
+        ttk.Spinbox(self.simple_frame, from_=5, to=1000, textvariable=self.multi_nb_students_var, width=10).pack(side="left", padx=5)
+        
+        ttk.Label(self.simple_frame, text="Établissements:", font=UI.TEXT_FONT, 
+                 background=UI.WHITE).pack(side="left", padx=(15, 5))
+        self.multi_nb_universities_var = tk.IntVar(value=100)
+        ttk.Spinbox(self.simple_frame, from_=5, to=1000, textvariable=self.multi_nb_universities_var, width=10).pack(side="left", padx=5)
+        
+        ttk.Label(self.simple_frame, text="Répétitions:", font=UI.TEXT_FONT, 
+                 background=UI.WHITE).pack(side="left", padx=(15, 5))
+        self.multi_repetitions_var = tk.IntVar(value=10)
+        ttk.Spinbox(self.simple_frame, from_=1, to=100, textvariable=self.multi_repetitions_var, width=10).pack(side="left", padx=5)
+        
+        # Options pour mode scalabilité
+        self.scalability_frame = ttk.Frame(options_frame, style="Card.TFrame")
+        self.scalability_frame.pack(side="left", fill="x", expand=True)
+        
+        ttk.Label(self.scalability_frame, text="Tailles à tester:", font=UI.TEXT_FONT, 
+                 background=UI.WHITE).pack(side="left", padx=(10, 5))
+        self.sizes_var = tk.StringVar(value="10, 50, 100, 200, 500, 1000")
+        ttk.Entry(self.scalability_frame, textvariable=self.sizes_var, width=35).pack(side="left", padx=5)
+        
+        ttk.Label(self.scalability_frame, text="Répétitions par taille:", font=UI.TEXT_FONT, 
+                 background=UI.WHITE).pack(side="left", padx=(15, 5))
+        self.scalability_repetitions_var = tk.IntVar(value=5)
+        ttk.Spinbox(self.scalability_frame, from_=1, to=50, textvariable=self.scalability_repetitions_var, width=10).pack(side="left", padx=5)
+        
+        # Cacher le mode scalabilité par défaut
+        self.scalability_frame.pack_forget()
+        
+        # Alpha sur la même ligne
+        ttk.Label(config_grid, text="Alpha (α):", font=UI.TEXT_FONT, 
+                 background=UI.WHITE).grid(row=2, column=0, sticky="w", padx=10, pady=5)
+        self.multi_alpha_var = tk.StringVar(value="0.6")
+        alpha_frame = ttk.Frame(config_grid, style="Card.TFrame")
+        alpha_frame.grid(row=2, column=1, sticky="w", pady=5)
+        ttk.Radiobutton(alpha_frame, text="0.3", variable=self.multi_alpha_var, value="0.3").pack(side="left", padx=3)
+        ttk.Radiobutton(alpha_frame, text="0.6", variable=self.multi_alpha_var, value="0.6").pack(side="left", padx=3)
+        ttk.Radiobutton(alpha_frame, text="0.9", variable=self.multi_alpha_var, value="0.9").pack(side="left", padx=3)
+        
+        # Boutons (compacts)
+        button_frame = ttk.Frame(config_card, style="Card.TFrame")
+        button_frame.pack(pady=(10, 0))
+        
+        self.multi_run_button = tk.Button(button_frame, text="🚀 LANCER", 
+                        font=(UI.BUTTON_FONT[0], 10, "bold"),
+                        bg="#7c3aed", fg=UI.WHITE, 
+                        activebackground="#6d28d9", activeforeground=UI.WHITE,
+                        cursor="hand2", relief="flat", padx=20, pady=10,
+                        borderwidth=0, highlightthickness=0,
+                        command=self.run_multi_test)
+        self.multi_run_button.pack(side="left", padx=3)
+        
+        self.multi_export_button = tk.Button(button_frame, text="💾 EXPORTER", 
+                        font=(UI.BUTTON_FONT[0], 10, "bold"),
+                        bg="#059669", fg=UI.WHITE, 
+                        activebackground="#047857", activeforeground=UI.WHITE,
+                        cursor="hand2", relief="flat", padx=20, pady=10,
+                        borderwidth=0, highlightthickness=0,
+                        command=self.export_multi_test_results,
+                        state="disabled")
+        self.multi_export_button.pack(side="left", padx=3)
+        
+        # Status
+        self.multi_status_label = ttk.Label(config_card, text="", font=UI.SMALL_FONT, 
+                         foreground=UI.SECONDARY_COLOR, background=UI.WHITE)
+        self.multi_status_label.pack(pady=(5, 0))
+        
+        # Card de résultats (prend tout l'espace restant)
+        results_card = ttk.Frame(content_frame, style="Card.TFrame", padding=15)
+        results_card.grid(row=1, column=0, sticky="nsew")
+        
+        ttk.Label(results_card, text="RÉSULTATS", 
+             font=(UI.BUTTON_FONT[0], 12, "bold"),
+             foreground="#0f172a", background=UI.WHITE).pack(anchor="w", pady=(0, 10))
+        
+        self.multi_results_tree = self.create_tree(
+            results_card,
+            columns=("test", "nb_etu", "nb_uni", "alpha", "sat_etu", "sat_uni", "temps", "complexite"),
+            headings=("Test #", "Étudiants", "Établ.", "α", "Sat. Étu.", "Sat. Établ.", "Temps (ms)", "Complexité"),
+            widths=(70, 90, 90, 60, 100, 110, 100, 120)
+        )
+    
+    def toggle_test_mode(self):
+        """Bascule entre les modes de test."""
+        if self.test_mode_var.get() == "simple":
+            self.scalability_frame.pack_forget()
+            self.simple_frame.pack(side="left", fill="x", expand=True)
+        else:
+            self.simple_frame.pack_forget()
+            self.scalability_frame.pack(side="left", fill="x", expand=True)
+    
+    def run_multi_test(self):
+        """Lance les tests multiples."""
+        try:
+            mode = self.test_mode_var.get()
+            alpha = float(self.multi_alpha_var.get())
+            
+            # Vider les résultats précédents
+            self.multi_test_results = []
+            self.clear_tree(self.multi_results_tree)
+            
+            self.multi_status_label.config(text="⏳ Tests en cours...")
+            self.multi_run_button.config(state="disabled")
+            self.multi_export_button.config(state="disabled")
+            self.root.update()
+            
+            test_num = 1
+            
+            if mode == "simple":
+                # Mode simple : une seule taille
+                nb_students = self.multi_nb_students_var.get()
+                nb_universities = self.multi_nb_universities_var.get()
+                repetitions = self.multi_repetitions_var.get()
+                
+                if nb_students > len(self.all_students) or nb_universities > len(self.all_universities):
+                    messagebox.showwarning("Attention", "Nombre insuffisant de données disponibles")
+                    self.multi_run_button.config(state="normal")
+                    return
+                
+                test_num = self._run_tests_for_size(nb_students, nb_universities, repetitions, alpha, test_num)
+                
+            else:
+                # Mode scalabilité : plusieurs tailles
+                sizes_str = self.sizes_var.get()
+                try:
+                    sizes = [int(s.strip()) for s in sizes_str.split(',')]
+                except:
+                    messagebox.showerror("Erreur", "Format invalide pour les tailles (utilisez: 10, 50, 100)")
+                    self.multi_run_button.config(state="normal")
+                    return
+                
+                repetitions = self.scalability_repetitions_var.get()
+                
+                for size in sizes:
+                    if size > len(self.all_students) or size > len(self.all_universities):
+                        messagebox.showwarning("Attention", f"Taille {size} ignorée: données insuffisantes")
+                        continue
+                    
+                    test_num = self._run_tests_for_size(size, size, repetitions, alpha, test_num)
+            
+            self.multi_status_label.config(
+                text=f"✅ {len(self.multi_test_results)} tests terminés avec succès!")
+            self.multi_run_button.config(state="normal")
+            self.multi_export_button.config(state="normal")
+            
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors des tests:\n{str(e)}")
+            self.multi_status_label.config(text="❌ Erreur lors des tests")
+            self.multi_run_button.config(state="normal")
+    
+    def _run_tests_for_size(self, nb_students, nb_universities, repetitions, alpha, test_num):
+        """Lance les tests pour une taille donnée."""
+        for rep in range(repetitions):
+            # Sélection aléatoire pour cette répétition
+            selected_students = random.sample(self.all_students, nb_students)
+            selected_universities = random.sample(self.all_universities, nb_universities)
+            
+            # Générer les préférences
+            prefs_etud = generer_preferences_etudiants(selected_students, selected_universities)
+            prefs_uni = generer_preferences_universites(selected_students, selected_universities)
+            capacites = {u.name: u.capacity for u in selected_universities}
+            
+            # Mesurer le temps d'exécution
+            start_time = time.time()
+            affectations = algorithme_affectation(prefs_etud, prefs_uni, capacites)
+            end_time = time.time()
+            exec_time_ms = (end_time - start_time) * 1000
+            
+            # Satisfactions
+            stats = mesurer_satisfaction_globale(affectations, prefs_etud, prefs_uni, capacites, alpha)
+            
+            # Compter les non affectés
+            nb_assigned = sum(len(students) for students in affectations.values())
+            nb_unassigned = nb_students - nb_assigned
+            
+            # Calculer la complexité théorique: O(n²) où n est le nombre d'étudiants
+            complexite_theorique = nb_students * nb_students
+            # Calculer la complexité observée (temps / opérations théoriques)
+            complexite_observee = exec_time_ms / complexite_theorique if complexite_theorique > 0 else 0
+            
+            # Stocker les résultats
+            result = {
+                "test_num": test_num,
+                "repetition": rep + 1,
+                "nb_students": nb_students,
+                "nb_universities": nb_universities,
+                "alpha": alpha,
+                "sat_students": stats["moyenne_etudiants"],
+                "sat_universities": stats["moyenne_universites"],
+                "nb_unassigned": nb_unassigned,
+                "exec_time_ms": exec_time_ms,
+                "complexite_theorique": complexite_theorique,
+                "complexite_observee": complexite_observee,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            self.multi_test_results.append(result)
+            
+            # Afficher dans le tableau
+            tag = 'evenrow' if (test_num - 1) % 2 == 0 else 'oddrow'
+            self.multi_results_tree.insert("", "end", 
+                values=(
+                    test_num,
+                    nb_students,
+                    nb_universities,
+                    f"{alpha:.1f}",
+                    f"{stats['moyenne_etudiants']:.1%}",
+                    f"{stats['moyenne_universites']:.1%}",
+                    f"{exec_time_ms:.2f}",
+                    f"{complexite_observee:.6f} ms/n²"
+                ),
+                tags=(tag,))
+            
+            test_num += 1
+            self.root.update()
+        
+        return test_num
+    
+    def export_multi_test_results(self):
+        """Exporte les résultats des tests multiples en CSV."""
+        if not self.multi_test_results:
+            messagebox.showwarning("Attention", "Aucun résultat à exporter")
+            return
+        
+        try:
+            # Demander où sauvegarder
+            filename = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                initialfile=f"tests_multiples_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            )
+            
+            if not filename:
+                return
+            
+            # Écrire le CSV
+            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+                fieldnames = [
+                    "Test", "Répétition", "Nb_Étudiants", "Nb_Établissements", 
+                    "Alpha", "Satisfaction_Étudiants", "Satisfaction_Établissements", 
+                    "Non_Affectés", "Temps_Execution_ms", "Complexite_Theorique", "Complexite_Observee",
+                    "Timestamp"
+                ]
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                
+                writer.writeheader()
+                for result in self.multi_test_results:
+                    writer.writerow({
+                        "Test": result["test_num"],
+                        "Répétition": result["repetition"],
+                        "Nb_Étudiants": result["nb_students"],
+                        "Nb_Établissements": result["nb_universities"],
+                        "Alpha": result["alpha"],
+                        "Satisfaction_Étudiants": f"{result['sat_students']:.4f}",
+                        "Satisfaction_Établissements": f"{result['sat_universities']:.4f}",
+                        "Non_Affectés": result["nb_unassigned"],
+                        "Temps_Execution_ms": f"{result['exec_time_ms']:.2f}",
+                        "Complexite_Theorique": result["complexite_theorique"],
+                        "Complexite_Observee": f"{result['complexite_observee']:.8f}",
+                        "Timestamp": result["timestamp"]
+                    })
+            
+            messagebox.showinfo("Succès", f"Résultats exportés vers:\n{filename}")
+            
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de l'export:\n{str(e)}")
 
 
 def main():

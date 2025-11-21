@@ -25,7 +25,8 @@ def load_students_from_csv(path: str) -> List[Student]:
     with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            full_name = row.get("full_name", "").strip()
+            full_name = row.get("full_name") or row.get("name", "")
+            full_name = full_name.strip()
             if full_name:
                 students.append(Student(full_name=full_name))
     return students

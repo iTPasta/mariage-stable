@@ -13,8 +13,11 @@ def algorithme_affectation(
     Implémentation de l'algorithme de mariage stable (Gale-Shapley).
     
     Cet algorithme trouve une affectation stable où :
-    - Aucun étudiant et université ne préfèrent être ensemble plutôt que leurs affectations actuelles
-    - Les universités remplissent leurs capacités en respectant leurs priorités
+    - Aucun étudiant et université ne préfèrent être ensemble plutôt que leurs affectations actuelles.
+    - Les universités remplissent leurs capacités en respectant leurs priorités.
+
+    Contrainte imposée dans cette implémentation: chaque université doit avoir
+    une capacité strictement égale à 1. Toute capacité différente provoque une erreur.
     
     Args:
         preferences_etudiants: {étudiant: [universités ordonnées]}
@@ -24,9 +27,14 @@ def algorithme_affectation(
     Returns:
         {université: [étudiants affectés]}
     """
-    affectations: Dict[UniversityKey, List[StudentKey]] = {
-        uni: [] for uni in preferences_universites
-    }
+    # Validation stricte des capacités: toutes doivent être = 1
+    for uni in preferences_universites:
+        if capacites.get(uni, 1) != 1:
+            raise ValueError(
+                f"Capacité invalide détectée pour '{uni}' (={capacites.get(uni)}). Le mode actuel impose capacity=1 pour chaque université."
+            )
+
+    affectations: Dict[UniversityKey, List[StudentKey]] = {uni: [] for uni in preferences_universites}
     rang_voeux: Dict[StudentKey, int] = {etu: 0 for etu in preferences_etudiants}
     etudiants_sans_affect = list(preferences_etudiants.keys())
 
