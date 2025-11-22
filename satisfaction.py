@@ -11,11 +11,11 @@ def satisfaction_etudiant(
     affectations: Dict[UniversityKey, List[StudentKey]],
 ) -> float:
     """
-    Calcule la satisfaction d'un étudiant avec Normalized Rank Score.
-    
+    Calcule la satisfaction d'un étudiant avec la formule normalisée.
+    S = 1 - (r-1)/(n-1) où r est le rang obtenu et n le nombre de choix.
     """
     prefs = preferences_etudiants[etudiant_key]
-    m = len(prefs)
+    n = len(prefs)
 
     # Trouver l'université d'affectation
     universite_key = None
@@ -27,11 +27,11 @@ def satisfaction_etudiant(
     if universite_key is None:
         return 0.0
 
-    if m == 1:
+    if n == 1:
         return 1.0
 
     rang = prefs.index(universite_key) + 1
-    sat = (m - rang) / (m - 1)
+    sat = 1 - (rang - 1) / (n - 1)
     return float(sat)
 
 
@@ -41,8 +41,8 @@ def satisfaction_etablissement(
     affectations: Dict[UniversityKey, List[StudentKey]],
 ) -> float:
     """
-    Calcule la satisfaction d'une université avec Normalized Rank Score.
-
+    Calcule la satisfaction d'une université avec la formule normalisée.
+    S = 1 - (r-1)/(n-1) où r est le rang obtenu et n le nombre de choix.
     """
     prefs = preferences_universites[universite_key]
     affectes = affectations.get(universite_key, [])
@@ -62,7 +62,7 @@ def satisfaction_etablissement(
     if n == 1:
         return 1.0
 
-    sat = (n - rang) / (n - 1)
+    sat = 1 - (rang - 1) / (n - 1)
     return float(sat)
 
 

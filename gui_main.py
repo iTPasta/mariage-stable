@@ -8,6 +8,10 @@ import os
 import csv
 from datetime import datetime
 import time
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from models import Student, University, SimulationData, StudentKey, UniversityKey
 from data.data_loader import load_students_from_csv, load_universities_from_csv
@@ -978,7 +982,8 @@ class ModernMatchingApp:
         # Container pour le contenu avec grille
         content_frame = ttk.Frame(multi_test_frame, style="Modern.TFrame")
         content_frame.pack(fill="both", expand=True)
-        content_frame.grid_rowconfigure(1, weight=10)  # Tableau prend 10 fois plus d'espace
+        content_frame.grid_rowconfigure(1, weight=3)  # Tableau prend 3 fois l'espace
+        content_frame.grid_rowconfigure(2, weight=7)  # Courbe prend 7 fois l'espace
         content_frame.grid_columnconfigure(0, weight=1)
         
         # Card de configuration (compacte)
@@ -1090,6 +1095,29 @@ class ModernMatchingApp:
             headings=("Test #", "Étudiants", "Établ.", "Sat. Étu.", "Sat. Établ.", "Temps (ms)", "Complexité"),
             widths=(70, 100, 100, 120, 130, 110, 140)
         )
+        
+        # Card pour la courbe (séparée avec plus d'espace)
+        curve_card = ttk.Frame(content_frame, style="Card.TFrame", padding=15)
+        curve_card.grid(row=2, column=0, sticky="nsew", pady=(10, 0))
+        
+        ttk.Label(curve_card, text="COURBE DE SATISFACTION", 
+             font=(UI.BUTTON_FONT[0], 12, "bold"),
+             foreground="#0f172a", background=UI.WHITE).pack(anchor="w", pady=(0, 10))
+        
+        # Bouton pour afficher la courbe
+        self.show_curve_button = tk.Button(curve_card, text="📈 Afficher la courbe", 
+                        font=(UI.BUTTON_FONT[0], 10, "bold"),
+                        bg="#2563eb", fg=UI.WHITE, 
+                        activebackground="#1d4ed8", activeforeground=UI.WHITE,
+                        cursor="hand2", relief="flat", padx=20, pady=10,
+                        borderwidth=0, highlightthickness=0,
+                        command=self.show_satisfaction_curve,
+                        state="disabled")
+        self.show_curve_button.pack(pady=(0, 10))
+        
+        # Zone pour afficher la courbe
+        self.curve_frame = ttk.Frame(curve_card, style="Card.TFrame")
+        self.curve_frame.pack(fill="both", expand=True)
     
     def toggle_test_mode(self):
         """Bascule entre les modes de test."""
@@ -1109,9 +1137,19 @@ class ModernMatchingApp:
             self.multi_test_results = []
             self.clear_tree(self.multi_results_tree)
             
+            # Réinitialiser les données pour la courbe
+            self.sat_students_list = []
+            self.sat_universities_list = []
+            self.sizes_list = []
+            
+            # Nettoyer la zone de courbe
+            for widget in self.curve_frame.winfo_children():
+                widget.destroy()
+            
             self.multi_status_label.config(text="⏳ Tests en cours...")
             self.multi_run_button.config(state="disabled")
             self.multi_export_button.config(state="disabled")
+            self.show_curve_button.config(state="disabled")
             self.root.update()
             
             test_num = 1
@@ -1152,6 +1190,7 @@ class ModernMatchingApp:
                 text=f"✅ {len(self.multi_test_results)} tests terminés avec succès!")
             self.multi_run_button.config(state="normal")
             self.multi_export_button.config(state="normal")
+            self.show_curve_button.config(state="normal")
             
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors des tests:\n{str(e)}")
@@ -1178,6 +1217,11 @@ class ModernMatchingApp:
             
             # Satisfactions
             stats = mesurer_satisfaction_globale(affectations, prefs_etud, prefs_uni, capacites)
+            
+            # Stocker les données pour la courbe
+            self.sat_students_list.append(stats["moyenne_etudiants"])
+            self.sat_universities_list.append(stats["moyenne_universites"])
+            self.sizes_list.append(nb_students)
             
             # Compter les non affectés
             nb_assigned = sum(len(students) for students in affectations.values())
@@ -1222,6 +1266,47 @@ class ModernMatchingApp:
             self.root.update()
         
         return test_num
+    
+    def show_satisfaction_curve(self):
+        """Affiche la courbe de comparaison satisfaction étudiants vs universités."""
+        # Nettoyer la zone
+        for widget in self.curve_frame.winfo_children():
+            widget.destroy()
+        
+        if not self.sat_students_list or not self.sat_universities_list:
+            ttk.Label(self.curve_frame, text="Aucune donnée à afficher", 
+                     font=UI.SMALL_FONT, background=UI.WHITE).pack(pady=20)
+            return
+        
+        # Créer la figure matplotlib
+        fig = Figure(figsize=(10, 5), dpi=100)
+        ax = fig.add_subplot(111)
+        
+        # Tracer les courbes
+        ax.plot(range(1, len(self.sat_students_list) + 1), 
+                [s * 100 for s in self.sat_students_list], 
+                marker='o', linewidth=2, markersize=6, 
+                color='#3b82f6', label='Satisfaction Étudiants')
+        ax.plot(range(1, len(self.sat_universities_list) + 1), 
+                [s * 100 for s in self.sat_universities_list], 
+                marker='s', linewidth=2, markersize=6, 
+                color='#10b981', label='Satisfaction Établissements')
+        
+        # Configuration du graphique
+        ax.set_xlabel('Numéro de test', fontsize=10)
+        ax.set_ylabel('Satisfaction (%)', fontsize=10)
+        ax.set_title('Comparaison Satisfaction Étudiants vs Établissements', 
+                    fontsize=12, fontweight='bold', pad=15)
+        ax.legend(loc='best', fontsize=9)
+        ax.grid(True, alpha=0.3, linestyle='--')
+        ax.set_ylim(0, 100)
+        
+        fig.tight_layout()
+        
+        # Intégrer dans tkinter
+        canvas = FigureCanvasTkAgg(fig, master=self.curve_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
     
     def export_multi_test_results(self):
         """Exporte les résultats des tests multiples en CSV."""
