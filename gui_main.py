@@ -81,12 +81,6 @@ class ScrollableFrame(ttk.Frame):
         self.canvas.bind_all("<Button-4>", _on_mousewheel)        # Linux up
         self.canvas.bind_all("<Button-5>", _on_mousewheel)        # Linux down
 
-ALPHA_PRESETS = {
-    "flexible": 0.3,
-    "moyen": 0.6,
-    "exigeant": 0.9,
-}
-
 STUDENTS_CSV = os.path.join("data", "etudiants.csv")
 UNIVERSITIES_CSV = os.path.join("data", "universites.csv")
 
@@ -202,7 +196,7 @@ class ModernMatchingApp:
                            font=("Segoe UI", 12), fg="#64748b", bg="#ffffff")
         subtitle.pack(pady=(5, 0))
         
-        desc = tk.Label(content, text="📊 Analyse de satisfaction avec paramètre α configurable", 
+        desc = tk.Label(content, text="📊 Analyse de satisfaction avec Normalized Rank Score", 
                        font=("Segoe UI", 10), fg="#94a3b8", bg="#ffffff")
         desc.pack(pady=(3, 0))
         
@@ -340,41 +334,6 @@ class ModernMatchingApp:
         self.university_line_info = ttk.Label(right_text, text="", font=UI.SMALL_FONT, foreground=UI.GRAY, background=UI.WHITE)
         self.university_line_info.pack(anchor="w", pady=(4,0))
 
-        # Séparateur avant Alpha
-        row += 1
-        ttk.Separator(card, orient="horizontal").grid(row=row, column=0, columnspan=3, sticky="ew", pady=20)
-
-        # Paramètre Alpha
-        row += 1
-        ttk.Label(card, text="Satisfaction étudiants (α):", font=(UI.TEXT_FONT[0], 11, "bold"), 
-             foreground="#334155", background=UI.WHITE).grid(row=row, column=0, sticky="w", pady=10, padx=(0, 20))
-        
-        self.alpha_var = tk.StringVar(value="flexible")
-        self.custom_alpha_var = tk.StringVar()
-        alpha_frame = ttk.Frame(card, style="Card.TFrame")
-        alpha_frame.grid(row=row, column=1, columnspan=2, sticky="w", pady=10)
-        
-        for i, (name, value) in enumerate(ALPHA_PRESETS.items()):
-            ttk.Radiobutton(alpha_frame, text=f"{name.capitalize()} (α={value})", 
-                           variable=self.alpha_var, value=name).pack(anchor="w", pady=2)
-        
-        # Option personnalisée
-        custom_frame = ttk.Frame(alpha_frame, style="Card.TFrame")
-        custom_frame.pack(anchor="w", pady=2)
-        ttk.Radiobutton(custom_frame, text="Personnalisé:", 
-                       variable=self.alpha_var, value="custom").pack(side="left")
-        ttk.Entry(custom_frame, textvariable=self.custom_alpha_var, width=10).pack(side="left", padx=5)
-        
-        # Description
-        row += 1
-        desc_frame = ttk.Frame(card, style="Card.TFrame")
-        desc_frame.grid(row=row, column=0, columnspan=3, sticky="ew", pady=(20, 0))
-        
-        ttk.Label(desc_frame, 
-             text="ℹ️ Le paramètre α contrôle la satisfaction exponentielle. Plus α est élevé, plus les étudiants préfèrent leurs premiers choix.",
-             font=UI.SMALL_FONT, foreground=UI.GRAY, background=UI.WHITE,
-                 wraplength=700, justify="left").pack(anchor="w")
-        
         # Bouton
         row += 1
         button_frame = ttk.Frame(card, style="Card.TFrame")
@@ -635,24 +594,6 @@ class ModernMatchingApp:
                 selected_students = random.sample(self.all_students, nb_students)
                 selected_universities = random.sample(self.all_universities, nb_universities)
             
-            # Alpha
-            # Alpha : priorité à la valeur personnalisée si valide
-            if self.alpha_var.get() == "custom":
-                custom_alpha = self.custom_alpha_var.get().strip()
-                try:
-                    alpha = float(custom_alpha)
-                    if not (0 < alpha <= 1):
-                        messagebox.showerror("Erreur", "Alpha doit être entre 0 et 1")
-                        self.run_button.config(state="normal")
-                        return
-                except ValueError:
-                    messagebox.showerror("Erreur", "Veuillez saisir une valeur numérique valide pour alpha")
-                    self.run_button.config(state="normal")
-                    return
-            else:
-                alpha_map = ALPHA_PRESETS
-                alpha = alpha_map[self.alpha_var.get()]
-            
             # Générer les préférences (aléatoires ou manuelles)
             if self.manual_mode_var.get():
                 prefs_etud = self.build_manual_student_prefs(selected_students, selected_universities)
@@ -668,7 +609,7 @@ class ModernMatchingApp:
             affectations = algorithme_affectation(prefs_etud, prefs_uni, capacites)
             
             # Satisfactions
-            stats = mesurer_satisfaction_globale(affectations, prefs_etud, prefs_uni, capacites, alpha)
+            stats = mesurer_satisfaction_globale(affectations, prefs_etud, prefs_uni, capacites)
             
             # Stocker les données
             self.simulation_data = SimulationData(
@@ -677,8 +618,7 @@ class ModernMatchingApp:
                 preferences_students=prefs_etud,
                 preferences_universities=prefs_uni,
                 assignments=affectations,
-                satisfaction_stats=stats,
-                alpha=alpha
+                satisfaction_stats=stats
             )
             
             # Mettre à jour l'affichage
@@ -1108,16 +1048,6 @@ class ModernMatchingApp:
         # Cacher le mode scalabilité par défaut
         self.scalability_frame.pack_forget()
         
-        # Alpha sur la même ligne
-        ttk.Label(config_grid, text="Alpha (α):", font=UI.TEXT_FONT, 
-                 background=UI.WHITE).grid(row=2, column=0, sticky="w", padx=10, pady=5)
-        self.multi_alpha_var = tk.StringVar(value="0.6")
-        alpha_frame = ttk.Frame(config_grid, style="Card.TFrame")
-        alpha_frame.grid(row=2, column=1, sticky="w", pady=5)
-        ttk.Radiobutton(alpha_frame, text="0.3", variable=self.multi_alpha_var, value="0.3").pack(side="left", padx=3)
-        ttk.Radiobutton(alpha_frame, text="0.6", variable=self.multi_alpha_var, value="0.6").pack(side="left", padx=3)
-        ttk.Radiobutton(alpha_frame, text="0.9", variable=self.multi_alpha_var, value="0.9").pack(side="left", padx=3)
-        
         # Boutons (compacts)
         button_frame = ttk.Frame(config_card, style="Card.TFrame")
         button_frame.pack(pady=(10, 0))
@@ -1156,9 +1086,9 @@ class ModernMatchingApp:
         
         self.multi_results_tree = self.create_tree(
             results_card,
-            columns=("test", "nb_etu", "nb_uni", "alpha", "sat_etu", "sat_uni", "temps", "complexite"),
-            headings=("Test #", "Étudiants", "Établ.", "α", "Sat. Étu.", "Sat. Établ.", "Temps (ms)", "Complexité"),
-            widths=(70, 90, 90, 60, 100, 110, 100, 120)
+            columns=("test", "nb_etu", "nb_uni", "sat_etu", "sat_uni", "temps", "complexite"),
+            headings=("Test #", "Étudiants", "Établ.", "Sat. Étu.", "Sat. Établ.", "Temps (ms)", "Complexité"),
+            widths=(70, 100, 100, 120, 130, 110, 140)
         )
     
     def toggle_test_mode(self):
@@ -1174,7 +1104,6 @@ class ModernMatchingApp:
         """Lance les tests multiples."""
         try:
             mode = self.test_mode_var.get()
-            alpha = float(self.multi_alpha_var.get())
             
             # Vider les résultats précédents
             self.multi_test_results = []
@@ -1198,7 +1127,7 @@ class ModernMatchingApp:
                     self.multi_run_button.config(state="normal")
                     return
                 
-                test_num = self._run_tests_for_size(nb_students, nb_universities, repetitions, alpha, test_num)
+                test_num = self._run_tests_for_size(nb_students, nb_universities, repetitions, test_num)
                 
             else:
                 # Mode scalabilité : plusieurs tailles
@@ -1217,7 +1146,7 @@ class ModernMatchingApp:
                         messagebox.showwarning("Attention", f"Taille {size} ignorée: données insuffisantes")
                         continue
                     
-                    test_num = self._run_tests_for_size(size, size, repetitions, alpha, test_num)
+                    test_num = self._run_tests_for_size(size, size, repetitions, test_num)
             
             self.multi_status_label.config(
                 text=f"✅ {len(self.multi_test_results)} tests terminés avec succès!")
@@ -1229,7 +1158,7 @@ class ModernMatchingApp:
             self.multi_status_label.config(text="❌ Erreur lors des tests")
             self.multi_run_button.config(state="normal")
     
-    def _run_tests_for_size(self, nb_students, nb_universities, repetitions, alpha, test_num):
+    def _run_tests_for_size(self, nb_students, nb_universities, repetitions, test_num):
         """Lance les tests pour une taille donnée."""
         for rep in range(repetitions):
             # Sélection aléatoire pour cette répétition
@@ -1248,7 +1177,7 @@ class ModernMatchingApp:
             exec_time_ms = (end_time - start_time) * 1000
             
             # Satisfactions
-            stats = mesurer_satisfaction_globale(affectations, prefs_etud, prefs_uni, capacites, alpha)
+            stats = mesurer_satisfaction_globale(affectations, prefs_etud, prefs_uni, capacites)
             
             # Compter les non affectés
             nb_assigned = sum(len(students) for students in affectations.values())
@@ -1265,7 +1194,6 @@ class ModernMatchingApp:
                 "repetition": rep + 1,
                 "nb_students": nb_students,
                 "nb_universities": nb_universities,
-                "alpha": alpha,
                 "sat_students": stats["moyenne_etudiants"],
                 "sat_universities": stats["moyenne_universites"],
                 "nb_unassigned": nb_unassigned,
@@ -1283,7 +1211,6 @@ class ModernMatchingApp:
                     test_num,
                     nb_students,
                     nb_universities,
-                    f"{alpha:.1f}",
                     f"{stats['moyenne_etudiants']:.1%}",
                     f"{stats['moyenne_universites']:.1%}",
                     f"{exec_time_ms:.2f}",
@@ -1317,7 +1244,7 @@ class ModernMatchingApp:
             with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
                 fieldnames = [
                     "Test", "Répétition", "Nb_Étudiants", "Nb_Établissements", 
-                    "Alpha", "Satisfaction_Étudiants", "Satisfaction_Établissements", 
+                    "Satisfaction_Étudiants", "Satisfaction_Établissements", 
                     "Non_Affectés", "Temps_Execution_ms", "Complexite_Theorique", "Complexite_Observee",
                     "Timestamp"
                 ]
@@ -1330,7 +1257,6 @@ class ModernMatchingApp:
                         "Répétition": result["repetition"],
                         "Nb_Étudiants": result["nb_students"],
                         "Nb_Établissements": result["nb_universities"],
-                        "Alpha": result["alpha"],
                         "Satisfaction_Étudiants": f"{result['sat_students']:.4f}",
                         "Satisfaction_Établissements": f"{result['sat_universities']:.4f}",
                         "Non_Affectés": result["nb_unassigned"],

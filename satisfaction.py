@@ -3,18 +3,15 @@ from typing import Dict, List
 import numpy as np
 
 from models import StudentKey, UniversityKey
-# Paramètre alpha par défaut (anciennement dans config.py)
-ALPHA_ETUDIANT = 0.3
 
 
 def satisfaction_etudiant(
     etudiant_key: StudentKey,
     preferences_etudiants: Dict[StudentKey, List[UniversityKey]],
     affectations: Dict[UniversityKey, List[StudentKey]],
-    alpha: float = ALPHA_ETUDIANT,
 ) -> float:
     """
-    Calcule la satisfaction exponentielle d'un étudiant.
+    Calcule la satisfaction d'un étudiant avec Normalized Rank Score.
     
     """
     prefs = preferences_etudiants[etudiant_key]
@@ -34,8 +31,8 @@ def satisfaction_etudiant(
         return 1.0
 
     rang = prefs.index(universite_key) + 1
-    sat = float(np.exp(-alpha * (rang - 1)))
-    return sat
+    sat = (m - rang) / (m - 1)
+    return float(sat)
 
 
 def satisfaction_etablissement(
@@ -44,7 +41,7 @@ def satisfaction_etablissement(
     affectations: Dict[UniversityKey, List[StudentKey]],
 ) -> float:
     """
-    Calcule la satisfaction linéaire d'une université.
+    Calcule la satisfaction d'une université avec Normalized Rank Score.
 
     """
     prefs = preferences_universites[universite_key]
@@ -65,7 +62,7 @@ def satisfaction_etablissement(
     if n == 1:
         return 1.0
 
-    sat = 1 - (rang - 1) / (n - 1)
+    sat = (n - rang) / (n - 1)
     return float(sat)
 
 
@@ -74,7 +71,6 @@ def mesurer_satisfaction_globale(
     preferences_etudiants: Dict[StudentKey, List[UniversityKey]],
     preferences_universites: Dict[UniversityKey, List[StudentKey]],
     capacites: Dict[UniversityKey, int],
-    alpha_etu: float = ALPHA_ETUDIANT,
 ) -> Dict:
 
     satisf_etudiants: Dict[StudentKey, float] = {}
@@ -83,7 +79,7 @@ def mesurer_satisfaction_globale(
     # Calculer satisfaction par étudiant
     for etu_key in preferences_etudiants:
         satisf_etudiants[etu_key] = satisfaction_etudiant(
-            etu_key, preferences_etudiants, affectations, alpha_etu
+            etu_key, preferences_etudiants, affectations
         )
 
     # Calculer satisfaction par université
@@ -97,5 +93,4 @@ def mesurer_satisfaction_globale(
         "satisfactions_universites": satisf_universites,
         "moyenne_etudiants": float(np.mean(list(satisf_etudiants.values()))),
         "moyenne_universites": float(np.mean(list(satisf_universites.values()))),
-        "alpha_etudiant": alpha_etu,
     }

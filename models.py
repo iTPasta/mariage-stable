@@ -35,7 +35,6 @@ class SimulationData:
     preferences_universities: Dict[UniversityKey, List[StudentKey]]
     assignments: Dict[UniversityKey, List[StudentKey]]
     satisfaction_stats: Dict
-    alpha: float
     
     @property
     def capacities(self) -> Dict[UniversityKey, int]:
