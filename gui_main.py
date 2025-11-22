@@ -34,6 +34,53 @@ class UI:
     TEXT_FONT = ("Segoe UI", 10)
     SMALL_FONT = ("Segoe UI", 9)
 
+
+class ScrollableFrame(ttk.Frame):
+    """Cadre scrollable vertical pour contenir beaucoup de widgets."""
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0, background="#f8fafc")
+        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.vsb.set)
+
+        self.vsb.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        # Contenu scrollable
+        self.inner = ttk.Frame(self.canvas, style="Modern.TFrame")
+        self._window = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+
+        # Ajuster la zone scrollable et la largeur
+        def _on_frame_configure(event=None):
+            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+            # forcer la largeur = largeur canvas
+            try:
+                self.canvas.itemconfigure(self._window, width=self.canvas.winfo_width())
+            except Exception:
+                pass
+
+        def _on_canvas_configure(event=None):
+            _on_frame_configure()
+
+        self.inner.bind("<Configure>", _on_frame_configure)
+        self.canvas.bind("<Configure>", _on_canvas_configure)
+
+        # Défilement molette (Linux/Windows)
+        def _on_mousewheel(event):
+            delta = 0
+            if event.num == 4:
+                delta = -1
+            elif event.num == 5:
+                delta = 1
+            elif hasattr(event, 'delta') and event.delta:
+                delta = -1 if event.delta > 0 else 1
+            if delta:
+                self.canvas.yview_scroll(delta, "units")
+
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)      # Windows/Mac
+        self.canvas.bind_all("<Button-4>", _on_mousewheel)        # Linux up
+        self.canvas.bind_all("<Button-5>", _on_mousewheel)        # Linux down
+
 ALPHA_PRESETS = {
     "flexible": 0.3,
     "moyen": 0.6,
@@ -190,10 +237,16 @@ class ModernMatchingApp:
     
     def create_config_tab(self):
         """Crée l'onglet de configuration."""
-        config_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=20)
+        config_frame = ttk.Frame(self.notebook, style="Modern.TFrame", padding=0)
         self.notebook.add(config_frame, text="⚙️ Paramètres")
-        
-        card = ttk.Frame(config_frame, style="Card.TFrame", padding=30)
+
+        # Cadre scrollable pour rendre tout le contenu visible
+        outer = ttk.Frame(config_frame, style="Modern.TFrame", padding=20)
+        outer.pack(fill="both", expand=True)
+        scroll = ScrollableFrame(outer)
+        scroll.pack(fill="both", expand=True)
+
+        card = ttk.Frame(scroll.inner, style="Card.TFrame", padding=30)
         card.pack(fill="both", expand=True)
         
         ttk.Label(card, text="PARAMÈTRES DE SIMULATION", 
@@ -222,11 +275,75 @@ class ModernMatchingApp:
         self.universities_info = ttk.Label(card, text="", font=UI.SMALL_FONT, 
                           foreground=UI.GRAY, background=UI.WHITE)
         self.universities_info.grid(row=row, column=2, sticky="w", padx=10)
-        
+
         # Séparateur
         row += 1
         ttk.Separator(card, orient="horizontal").grid(row=row, column=0, columnspan=3, sticky="ew", pady=20)
-        
+
+        # ===== Préférences manuelles (déplacé en haut) =====
+        row += 1
+        ttk.Label(card, text="PRÉFÉRENCES MANUELLES (optionnel)", 
+             font=(UI.BUTTON_FONT[0], 14, "bold"),
+             foreground="#0f172a", background=UI.WHITE).grid(
+            row=row, column=0, columnspan=3, sticky="w", pady=(0, 10))
+
+        row += 1
+        self.manual_mode_var = tk.BooleanVar(value=False)
+        manual_toggle = ttk.Checkbutton(card, text="Configurer les préférences moi-même (ordre des choix)",
+                        variable=self.manual_mode_var, command=self.toggle_manual_prefs)
+        manual_toggle.grid(row=row, column=0, columnspan=3, sticky="w", pady=(0, 10))
+
+        row += 1
+        # Conteneur repliable pour l'édition manuelle
+        self.manual_prefs_frame = ttk.Frame(card, style="Card.TFrame")
+        self.manual_prefs_frame.grid(row=row, column=0, columnspan=3, sticky="nsew")
+        self.manual_prefs_frame.grid_remove()
+
+        # Infos sélection
+        info_frame = ttk.Frame(self.manual_prefs_frame, style="Card.TFrame", padding=10)
+        info_frame.pack(fill="x")
+        self.manual_info_label = ttk.Label(info_frame, text="Sélection actuelle: 0 étudiants, 0 établissements",
+                           font=UI.SMALL_FONT, foreground=UI.GRAY, background=UI.WHITE)
+        self.manual_info_label.pack(anchor="w")
+
+        # Aide + mapping
+        help_label = ttk.Label(self.manual_prefs_frame,
+            text="Saisie par ligne et Entrée\nÉtudiants → 1: a,b,c (1..N)\nÉtablissements → a: 3,1,2 (a..)",
+            font=UI.SMALL_FONT, foreground=UI.GRAY, background=UI.WHITE, justify="left")
+        help_label.pack(anchor="w", pady=(6, 0))
+
+        self.manual_mapping_label = ttk.Label(self.manual_prefs_frame, text="", font=UI.SMALL_FONT,
+                                              foreground="#334155", background=UI.WHITE, justify="left")
+        self.manual_mapping_label.pack(anchor="w", pady=(6, 8))
+
+        # Deux barres de saisie (étudiants / établissements)
+        text_container = ttk.Frame(self.manual_prefs_frame, style="Card.TFrame")
+        text_container.pack(fill="x")
+
+        left_text = ttk.Frame(text_container, style="Card.TFrame")
+        left_text.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        ttk.Label(left_text, text="Étudiants (ex: 1: a,b,c)", font=UI.TEXT_FONT, background=UI.WHITE).pack(anchor="w")
+        self.student_line_var = tk.StringVar()
+        self.student_line_entry = ttk.Entry(left_text, textvariable=self.student_line_var)
+        self.student_line_entry.pack(fill="x")
+        self.student_line_entry.bind('<Return>', self.on_student_line_enter)
+        self.student_line_info = ttk.Label(left_text, text="", font=UI.SMALL_FONT, foreground=UI.GRAY, background=UI.WHITE)
+        self.student_line_info.pack(anchor="w", pady=(4,0))
+
+        right_text = ttk.Frame(text_container, style="Card.TFrame")
+        right_text.pack(side="left", fill="x", expand=True, padx=(6, 0))
+        ttk.Label(right_text, text="Établissements (ex: a: 3,1,2)", font=UI.TEXT_FONT, background=UI.WHITE).pack(anchor="w")
+        self.university_line_var = tk.StringVar()
+        self.university_line_entry = ttk.Entry(right_text, textvariable=self.university_line_var)
+        self.university_line_entry.pack(fill="x")
+        self.university_line_entry.bind('<Return>', self.on_university_line_enter)
+        self.university_line_info = ttk.Label(right_text, text="", font=UI.SMALL_FONT, foreground=UI.GRAY, background=UI.WHITE)
+        self.university_line_info.pack(anchor="w", pady=(4,0))
+
+        # Séparateur avant Alpha
+        row += 1
+        ttk.Separator(card, orient="horizontal").grid(row=row, column=0, columnspan=3, sticky="ew", pady=20)
+
         # Paramètre Alpha
         row += 1
         ttk.Label(card, text="Satisfaction étudiants (α):", font=(UI.TEXT_FONT[0], 11, "bold"), 
@@ -276,6 +393,21 @@ class ModernMatchingApp:
         self.status_label = ttk.Label(card, text="", font=UI.TEXT_FONT, 
                          foreground=UI.SECONDARY_COLOR, background=UI.WHITE)
         self.status_label.grid(row=row+1, column=0, columnspan=3, pady=(10, 0))
+
+        # Données internes pour le mode manuel
+        self.manual_students = []
+        self.manual_universities = []
+        self.custom_prefs_students = {}
+        self.custom_prefs_universities = {}
+
+        # Traces pour mettre à jour l'éditeur quand les nombres changent
+        try:
+            self.nb_students_var.trace_add('write', lambda *args: self.refresh_manual_entities())
+            self.nb_universities_var.trace_add('write', lambda *args: self.refresh_manual_entities())
+        except Exception:
+            # Compat older Tk versions
+            self.nb_students_var.trace('w', lambda *args: self.refresh_manual_entities())
+            self.nb_universities_var.trace('w', lambda *args: self.refresh_manual_entities())
     
     def create_results_tab(self):
         """Crée l'onglet de résultats."""
@@ -491,9 +623,17 @@ class ModernMatchingApp:
             self.run_button.config(state="disabled")
             self.root.update()
             
-            # Sélection aléatoire
-            selected_students = random.sample(self.all_students, nb_students)
-            selected_universities = random.sample(self.all_universities, nb_universities)
+            # Sélection des entités
+            if self.manual_mode_var.get():
+                # Utiliser la sélection déterministe/éditée
+                if len(self.manual_students) < nb_students or len(self.manual_universities) < nb_universities:
+                    messagebox.showwarning("Attention", "Les listes manuelles ne sont pas prêtes. Elles seront complétées automatiquement.")
+                selected_students = self.manual_students[:nb_students] or self.all_students[:nb_students]
+                selected_universities = self.manual_universities[:nb_universities] or self.all_universities[:nb_universities]
+            else:
+                # Sélection aléatoire
+                selected_students = random.sample(self.all_students, nb_students)
+                selected_universities = random.sample(self.all_universities, nb_universities)
             
             # Alpha
             # Alpha : priorité à la valeur personnalisée si valide
@@ -513,9 +653,13 @@ class ModernMatchingApp:
                 alpha_map = ALPHA_PRESETS
                 alpha = alpha_map[self.alpha_var.get()]
             
-            # Générer les préférences
-            prefs_etud = generer_preferences_etudiants(selected_students, selected_universities)
-            prefs_uni = generer_preferences_universites(selected_students, selected_universities)
+            # Générer les préférences (aléatoires ou manuelles)
+            if self.manual_mode_var.get():
+                prefs_etud = self.build_manual_student_prefs(selected_students, selected_universities)
+                prefs_uni = self.build_manual_university_prefs(selected_students, selected_universities)
+            else:
+                prefs_etud = generer_preferences_etudiants(selected_students, selected_universities)
+                prefs_uni = generer_preferences_universites(selected_students, selected_universities)
             
             # Capacités
             capacites = {u.name: u.capacity for u in selected_universities}
@@ -550,6 +694,241 @@ class ModernMatchingApp:
             messagebox.showerror("Erreur", f"Erreur lors de la simulation:\n{str(e)}")
             self.status_label.config(text="❌ Erreur lors de la simulation")
             self.run_button.config(state="normal")
+
+    # =====================
+    # Préférences manuelles
+    # =====================
+    def toggle_manual_prefs(self):
+        if self.manual_mode_var.get():
+            self.manual_prefs_frame.grid()
+            self.refresh_manual_entities()
+        else:
+            self.manual_prefs_frame.grid_remove()
+
+    # plus de bascule de mode: saisie texte uniquement
+
+    def refresh_manual_entities(self):
+        if not self.manual_mode_var.get():
+            return
+        nb_s = self.nb_students_var.get()
+        nb_u = self.nb_universities_var.get()
+        # Construire listes déterministes (premiers de la liste chargée)
+        self.manual_students = self.all_students[:nb_s]
+        self.manual_universities = self.all_universities[:nb_u]
+        self.manual_info_label.config(text=f"Sélection actuelle: {len(self.manual_students)} étudiants, {len(self.manual_universities)} établissements")
+
+        # Initialiser les dicts si vides
+        uni_names = [u.name for u in self.manual_universities]
+        etu_names = [e.full_name for e in self.manual_students]
+        for e in etu_names:
+            self.custom_prefs_students.setdefault(e, uni_names.copy())
+            # Nettoyer pour ne garder que ceux existants et dans l'ordre actuel
+            self.custom_prefs_students[e] = [x for x in self.custom_prefs_students[e] if x in uni_names]
+            for x in uni_names:
+                if x not in self.custom_prefs_students[e]:
+                    self.custom_prefs_students[e].append(x)
+        for u in uni_names:
+            self.custom_prefs_universities.setdefault(u, etu_names.copy())
+            self.custom_prefs_universities[u] = [x for x in self.custom_prefs_universities[u] if x in etu_names]
+            for x in etu_names:
+                if x not in self.custom_prefs_universities[u]:
+                    self.custom_prefs_universities[u].append(x)
+
+        # plus de sélecteurs visuels à rafraîchir (mode texte)
+
+        # Mettre à jour le mapping pour la saisie texte
+        try:
+            letters = [chr(ord('a') + i) for i in range(len(self.manual_universities))]
+        except Exception:
+            letters = []
+        mapping_lines = []
+        mapping_lines.append("Index étudiants ↔ noms:")
+        for i, s in enumerate(self.manual_students, start=1):
+            mapping_lines.append(f"  {i} = {s.full_name}")
+        mapping_lines.append("Lettres établissements ↔ noms:")
+        for i, u in enumerate(self.manual_universities):
+            if i < 26:
+                mapping_lines.append(f"  {letters[i]} = {u.name}")
+        mapping_text = "\n".join(mapping_lines)
+        if hasattr(self, 'manual_mapping_label'):
+            self.manual_mapping_label.config(text=mapping_text)
+
+    # pré-remplissage non nécessaire dans le mode barre unique
+
+    # parsing ligne par ligne via on_student_line_enter / on_university_line_enter
+
+    def on_student_line_enter(self, event=None):
+        line = (self.student_line_var.get() or '').strip()
+        if not line or ':' not in line:
+            self.student_line_info.config(text="Format attendu: 1: a,b,c")
+            return
+        left, right = line.split(':', 1)
+        idx = left.strip()
+        order_letters = [t.strip().lower() for t in right.split(',') if t.strip()]
+        # mapping
+        try:
+            idx_int = int(idx)
+        except ValueError:
+            self.student_line_info.config(text="L'identifiant étudiant doit être un entier (ex: 1)")
+            return
+        if idx_int < 1 or idx_int > len(self.manual_students):
+            self.student_line_info.config(text="Indice étudiant hors sélection")
+            return
+        stu_name = self.manual_students[idx_int - 1].full_name
+        letters = [chr(ord('a') + i) for i in range(min(len(self.manual_universities), 26))]
+        uni_letter_to_name = {l: self.manual_universities[i].name for i, l in enumerate(letters)}
+        # filtrer et compléter
+        seen = []
+        for l in order_letters:
+            if l in uni_letter_to_name and l not in seen:
+                seen.append(l)
+        for l in letters:
+            if l not in seen:
+                seen.append(l)
+        self.custom_prefs_students[stu_name] = [uni_letter_to_name[l] for l in seen]
+        # clear
+        self.student_line_var.set('')
+        self.student_line_info.config(text=f"Enregistré pour étudiant {idx} → {','.join(order_letters) if order_letters else 'tous'}")
+
+    def on_university_line_enter(self, event=None):
+        line = (self.university_line_var.get() or '').strip()
+        if not line or ':' not in line:
+            self.university_line_info.config(text="Format attendu: a: 3,1,2")
+            return
+        left, right = line.split(':', 1)
+        letter = (left.strip().lower() or '')
+        order_idxs = [t.strip() for t in right.split(',') if t.strip()]
+        # mapping
+        letters = [chr(ord('a') + i) for i in range(min(len(self.manual_universities), 26))]
+        if letter not in letters:
+            self.university_line_info.config(text="Lettre établissement hors sélection (a..)")
+            return
+        uni_name = self.manual_universities[letters.index(letter)].name
+        # filtrer et compléter
+        n_s = len(self.manual_students)
+        idx_set = set(str(i) for i in range(1, n_s+1))
+        seen = []
+        for i in order_idxs:
+            if i in idx_set and i not in seen:
+                seen.append(i)
+        for i in range(1, n_s+1):
+            si = str(i)
+            if si not in seen:
+                seen.append(si)
+        self.custom_prefs_universities[uni_name] = [self.manual_students[int(i)-1].full_name for i in seen]
+        # clear
+        self.university_line_var.set('')
+        self.university_line_info.config(text=f"Enregistré pour établi. {letter} → {','.join(order_idxs) if order_idxs else 'tous'}")
+
+    def load_student_prefs(self, etu_name: str):
+        self.student_prefs_listbox.delete(0, tk.END)
+        for uni in self.custom_prefs_students.get(etu_name, []):
+            self.student_prefs_listbox.insert(tk.END, uni)
+
+    def load_university_prefs(self, uni_name: str):
+        self.university_prefs_listbox.delete(0, tk.END)
+        for etu in self.custom_prefs_universities.get(uni_name, []):
+            self.university_prefs_listbox.insert(tk.END, etu)
+
+    def on_select_student(self, event=None):
+        name = self.student_selector.get()
+        if name:
+            self.load_student_prefs(name)
+
+    def on_select_university(self, event=None):
+        name = self.university_selector.get()
+        if name:
+            self.load_university_prefs(name)
+
+    def move_item(self, listbox: tk.Listbox, delta: int, who: str):
+        cur = listbox.curselection()
+        if not cur:
+            return
+        idx = cur[0]
+        new_idx = idx + delta
+        if new_idx < 0 or new_idx >= listbox.size():
+            return
+        val = listbox.get(idx)
+        listbox.delete(idx)
+        listbox.insert(new_idx, val)
+        listbox.selection_clear(0, tk.END)
+        listbox.selection_set(new_idx)
+        listbox.activate(new_idx)
+        self.persist_listbox_order(who)
+
+    def randomize_order(self, who: str):
+        import random as _r
+        if who == "student":
+            etu = self.student_selector.get()
+            if not etu:
+                return
+            items = list(self.custom_prefs_students.get(etu, []))
+            _r.shuffle(items)
+            self.custom_prefs_students[etu] = items
+            self.load_student_prefs(etu)
+        else:
+            uni = self.university_selector.get()
+            if not uni:
+                return
+            items = list(self.custom_prefs_universities.get(uni, []))
+            _r.shuffle(items)
+            self.custom_prefs_universities[uni] = items
+            self.load_university_prefs(uni)
+
+    def reset_order(self, who: str):
+        if who == "student":
+            etu = self.student_selector.get()
+            if not etu:
+                return
+            uni_names = [u.name for u in self.manual_universities]
+            self.custom_prefs_students[etu] = uni_names.copy()
+            self.load_student_prefs(etu)
+        else:
+            uni = self.university_selector.get()
+            if not uni:
+                return
+            etu_names = [e.full_name for e in self.manual_students]
+            self.custom_prefs_universities[uni] = etu_names.copy()
+            self.load_university_prefs(uni)
+
+    def persist_listbox_order(self, who: str):
+        if who == "student":
+            etu = self.student_selector.get()
+            if not etu:
+                return
+            items = [self.student_prefs_listbox.get(i) for i in range(self.student_prefs_listbox.size())]
+            self.custom_prefs_students[etu] = items
+        else:
+            uni = self.university_selector.get()
+            if not uni:
+                return
+            items = [self.university_prefs_listbox.get(i) for i in range(self.university_prefs_listbox.size())]
+            self.custom_prefs_universities[uni] = items
+
+    def build_manual_student_prefs(self, selected_students, selected_universities):
+        uni_names = [u.name for u in selected_universities]
+        result = {}
+        for s in selected_students:
+            order = self.custom_prefs_students.get(s.full_name, uni_names.copy())
+            # Compléter pour garantir permutation
+            order = [x for x in order if x in uni_names]
+            for x in uni_names:
+                if x not in order:
+                    order.append(x)
+            result[s.full_name] = order
+        return result
+
+    def build_manual_university_prefs(self, selected_students, selected_universities):
+        etu_names = [e.full_name for e in selected_students]
+        result = {}
+        for u in selected_universities:
+            order = self.custom_prefs_universities.get(u.name, etu_names.copy())
+            order = [x for x in order if x in etu_names]
+            for x in etu_names:
+                if x not in order:
+                    order.append(x)
+            result[u.name] = order
+        return result
     
     def update_results(self):
         """Met à jour l'affichage des résultats."""

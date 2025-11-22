@@ -16,18 +16,6 @@ def satisfaction_etudiant(
     """
     Calcule la satisfaction exponentielle d'un étudiant.
     
-    Formule: S = exp(-alpha * (rang - 1))
-    - rang=1 (premier choix) → S = 1.0 (100% satisfait)
-    - rang augmente → S diminue exponentiellement
-    
-    Args:
-        etudiant_key: Nom de l'étudiant
-        preferences_etudiants: Préférences des étudiants
-        affectations: Affectations actuelles
-        alpha: Paramètre de contrôle de la satisfaction
-        
-    Returns:
-        Score de satisfaction entre 0 et 1
     """
     prefs = preferences_etudiants[etudiant_key]
     m = len(prefs)
@@ -57,18 +45,7 @@ def satisfaction_etablissement(
 ) -> float:
     """
     Calcule la satisfaction linéaire d'une université.
-    
-    Formule: S = 1 - (rang - 1) / (n - 1)
-    - Le premier étudiant affecté est le plus satisfaisant
-    - La satisfaction décroît linéairement avec le rang
-    
-    Args:
-        universite_key: Nom de l'université
-        preferences_universites: Préférences des universités
-        affectations: Affectations actuelles
-        
-    Returns:
-        Score de satisfaction entre 0 et 1
+
     """
     prefs = preferences_universites[universite_key]
     affectes = affectations.get(universite_key, [])
@@ -99,24 +76,7 @@ def mesurer_satisfaction_globale(
     capacites: Dict[UniversityKey, int],
     alpha_etu: float = ALPHA_ETUDIANT,
 ) -> Dict:
-    """
-    Calcule la satisfaction globale de tous les acteurs.
-    
-    Args:
-        affectations: Affectations actuelles
-        preferences_etudiants: Préférences des étudiants
-        preferences_universites: Préférences des universités
-        capacites: Capacités des universités
-        alpha_etu: Paramètre alpha pour satisfaction exponentielle
-        
-    Returns:
-        Dictionnaire contenant:
-        - satisfactions_etudiants: {étudiant: score}
-        - satisfactions_universites: {université: score}
-        - moyenne_etudiants: moyenne des satisfactions des étudiants
-        - moyenne_universites: moyenne des satisfactions des universités
-        - alpha_etudiant: paramètre alpha utilisé
-    """
+
     satisf_etudiants: Dict[StudentKey, float] = {}
     satisf_universites: Dict[UniversityKey, float] = {}
 

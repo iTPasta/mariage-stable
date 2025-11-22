@@ -12,12 +12,6 @@ def generer_preferences_etudiants(
     """
     Génère les préférences aléatoires pour chaque étudiant.
     
-    Args:
-        etudiants: Liste des étudiants
-        universites: Liste des universités
-        
-    Returns:
-        Dictionnaire {nom_etudiant: [liste_universites_ordonnees]}
     """
     preferences: Dict[StudentKey, List[UniversityKey]] = {}
     uni_names = [u.name for u in universites]
@@ -36,13 +30,7 @@ def generer_preferences_universites(
 ) -> Dict[UniversityKey, List[StudentKey]]:
     """
     Génère les préférences aléatoires pour chaque université.
-    
-    Args:
-        etudiants: Liste des étudiants
-        universites: Liste des universités
-        
-    Returns:
-        Dictionnaire {nom_universite: [liste_etudiants_ordonnes]}
+
     """
     preferences: Dict[UniversityKey, List[StudentKey]] = {}
     etu_names = [e.full_name for e in etudiants]

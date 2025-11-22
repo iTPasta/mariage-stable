@@ -9,24 +9,7 @@ def algorithme_affectation(
     preferences_universites: Dict[UniversityKey, List[StudentKey]],
     capacites: Dict[UniversityKey, int],
 ) -> Dict[UniversityKey, List[StudentKey]]:
-    """
-    Implémentation de l'algorithme de mariage stable (Gale-Shapley).
     
-    Cet algorithme trouve une affectation stable où :
-    - Aucun étudiant et université ne préfèrent être ensemble plutôt que leurs affectations actuelles.
-    - Les universités remplissent leurs capacités en respectant leurs priorités.
-
-    Contrainte imposée dans cette implémentation: chaque université doit avoir
-    une capacité strictement égale à 1. Toute capacité différente provoque une erreur.
-    
-    Args:
-        preferences_etudiants: {étudiant: [universités ordonnées]}
-        preferences_universites: {université: [étudiants ordonnés]}
-        capacites: {université: capacité}
-        
-    Returns:
-        {université: [étudiants affectés]}
-    """
     # Validation stricte des capacités: toutes doivent être = 1
     for uni in preferences_universites:
         if capacites.get(uni, 1) != 1:
