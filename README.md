@@ -1,4 +1,4 @@
-## Prérequis (court)
+## Prérequis 
 - Python 3.8+ avec Tkinter
 - `matplotlib`
 
