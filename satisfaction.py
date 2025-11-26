@@ -1,6 +1,7 @@
 """Calcul des satisfactions pour étudiants et universités."""
 from typing import Dict, List
 import numpy as np
+import math
 
 from models import StudentKey, UniversityKey
 
@@ -66,6 +67,57 @@ def satisfaction_etablissement(
     return float(sat)
 
 
+def calculer_rang_moyen_etudiants(
+    affectations: Dict[UniversityKey, List[StudentKey]],
+    preferences_etudiants: Dict[StudentKey, List[UniversityKey]],
+) -> float:
+    """
+    Calcule le rang moyen obtenu par les étudiants (demandeurs/proposants).
+    Rang 1 = premier choix, rang n = dernier choix.
+    """
+    rangs = []
+    
+    for etu_key in preferences_etudiants:
+        prefs = preferences_etudiants[etu_key]
+        
+        # Trouver l'université d'affectation
+        universite_key = None
+        for uni, etus in affectations.items():
+            if etu_key in etus:
+                universite_key = uni
+                break
+        
+        if universite_key is not None and universite_key in prefs:
+            rang = prefs.index(universite_key) + 1
+            rangs.append(rang)
+    
+    return float(np.mean(rangs)) if rangs else 0.0
+
+
+def calculer_rang_moyen_etablissements(
+    affectations: Dict[UniversityKey, List[StudentKey]],
+    preferences_universites: Dict[UniversityKey, List[StudentKey]],
+) -> float:
+    """
+    Calcule le rang moyen obtenu par les établissements (receveurs).
+    Rang 1 = premier choix, rang n = dernier choix.
+    """
+    rangs = []
+    
+    for uni_key in preferences_universites:
+        prefs = preferences_universites[uni_key]
+        affectes = affectations.get(uni_key, [])
+        
+        if len(affectes) > 0:
+            etudiant_key = affectes[0]  # Premier étudiant affecté
+            
+            if etudiant_key in prefs:
+                rang = prefs.index(etudiant_key) + 1
+                rangs.append(rang)
+    
+    return float(np.mean(rangs)) if rangs else 0.0
+
+
 def mesurer_satisfaction_globale(
     affectations: Dict[UniversityKey, List[StudentKey]],
     preferences_etudiants: Dict[StudentKey, List[UniversityKey]],
@@ -88,9 +140,22 @@ def mesurer_satisfaction_globale(
             uni_key, preferences_universites, affectations
         )
 
+    # Calculer rangs moyens
+    rang_moyen_etu = calculer_rang_moyen_etudiants(affectations, preferences_etudiants)
+    rang_moyen_etab = calculer_rang_moyen_etablissements(affectations, preferences_universites)
+    
+    # Calculs théoriques de Pittel 
+    n = len(preferences_etudiants)
+    log_n = math.log(n) if n > 1 else 1.0
+    n_sur_log_n = n / log_n if log_n > 0 else float(n)
+
     return {
         "satisfactions_etudiants": satisf_etudiants,
         "satisfactions_universites": satisf_universites,
         "moyenne_etudiants": float(np.mean(list(satisf_etudiants.values()))),
         "moyenne_universites": float(np.mean(list(satisf_universites.values()))),
+        "rang_moyen_etudiants": rang_moyen_etu,
+        "rang_moyen_etablissements": rang_moyen_etab,
+        "log_n_theorique": log_n,
+        "n_sur_log_n_theorique": n_sur_log_n,
     }

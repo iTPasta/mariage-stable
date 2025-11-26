@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox, filedialog
 import random
 from typing import Optional, List, Dict
 import os
+import math
 import csv
 from datetime import datetime
 import time
@@ -404,6 +405,10 @@ class ModernMatchingApp:
             ("unassigned", "Non affectés", "0"),
             ("avg_students", "Satisfaction moyenne étudiants", "0%"),
             ("avg_universities", "Satisfaction moyenne établissements", "0%"),
+            ("rang_moy_students", "Rang moyen étudiants (observé)", "0.00"),
+            ("log_n_theo", "Rang théorique attendu des étudiants : log(n)", "0.00"),
+            ("rang_moy_universities", "Rang moyen établissements (observé)", "0.00"),
+            ("n_sur_log_n_theo", "Rang théorique attendu des établissements : n / log(n)", "0.00"),
         ]
         
         for i, (key, label, default) in enumerate(stats_info):
@@ -894,6 +899,14 @@ class ModernMatchingApp:
             text=f"{data.satisfaction_stats['moyenne_etudiants']:.1%}")
         self.stat_labels["avg_universities"].config(
             text=f"{data.satisfaction_stats['moyenne_universites']:.1%}")
+        self.stat_labels["rang_moy_students"].config(
+            text=f"{data.satisfaction_stats.get('rang_moyen_etudiants', 0):.2f}")
+        self.stat_labels["log_n_theo"].config(
+            text=f"{data.satisfaction_stats.get('log_n_theorique', 0):.2f}")
+        self.stat_labels["rang_moy_universities"].config(
+            text=f"{data.satisfaction_stats.get('rang_moyen_etablissements', 0):.2f}")
+        self.stat_labels["n_sur_log_n_theo"].config(
+            text=f"{data.satisfaction_stats.get('n_sur_log_n_theorique', 0):.2f}")
         
         # Préférences des étudiants
         self.clear_tree(self.students_prefs_tree)
@@ -1091,9 +1104,9 @@ class ModernMatchingApp:
         
         self.multi_results_tree = self.create_tree(
             results_card,
-            columns=("test", "nb_etu", "nb_uni", "sat_etu", "sat_uni", "temps", "complexite"),
-            headings=("Test #", "Étudiants", "Établ.", "Sat. Étu.", "Sat. Établ.", "Temps (ms)", "Complexité"),
-            widths=(70, 100, 100, 120, 130, 110, 140)
+            columns=("test", "nb_etu", "nb_uni", "sat_etu", "sat_uni", "r_etu", "r_uni", "temps", "complexite"),
+            headings=("Test #", "Étudiants", "Établ.", "Sat. Étu.", "Sat. Établ.", "Rang Étud. (obs/th)", "Rang Univ. (obs/th)", "Temps (ms)", "Complexité"),
+            widths=(60, 80, 80, 100, 110, 140, 150, 90, 120)
         )
         
         # Card pour la courbe (séparée avec plus d'espace)
@@ -1232,6 +1245,16 @@ class ModernMatchingApp:
             # Calculer la complexité observée (temps / opérations théoriques)
             complexite_observee = exec_time_ms / complexite_theorique if complexite_theorique > 0 else 0
             
+            # Rangs moyens observés (via relation linéaire avec la satisfaction moyenne)
+            # E[r] = 1 + (1 - E[S]) * (n - 1)
+            r_etu_obs = 1 + (1 - stats["moyenne_etudiants"]) * (nb_universities - 1)
+            r_uni_obs = 1 + (1 - stats["moyenne_universites"]) * (nb_students - 1)
+
+            # Valeurs théoriques (Pittel): proposants ~ log n, receveurs ~ n / log n
+            # Utiliser n >= 2 pour éviter log(1)=0; pour n=1, le rang attendu vaut 1
+            r_etu_th = math.log(nb_universities) if nb_universities >= 2 else 1.0
+            r_uni_th = (nb_students / math.log(nb_students)) if nb_students >= 2 else 1.0
+            
             # Stocker les résultats
             result = {
                 "test_num": test_num,
@@ -1240,6 +1263,10 @@ class ModernMatchingApp:
                 "nb_universities": nb_universities,
                 "sat_students": stats["moyenne_etudiants"],
                 "sat_universities": stats["moyenne_universites"],
+                "r_etu_obs": r_etu_obs,
+                "r_etu_th": r_etu_th,
+                "r_uni_obs": r_uni_obs,
+                "r_uni_th": r_uni_th,
                 "nb_unassigned": nb_unassigned,
                 "exec_time_ms": exec_time_ms,
                 "complexite_theorique": complexite_theorique,
@@ -1257,6 +1284,8 @@ class ModernMatchingApp:
                     nb_universities,
                     f"{stats['moyenne_etudiants']:.1%}",
                     f"{stats['moyenne_universites']:.1%}",
+                    f"{r_etu_obs:.2f} / {r_etu_th:.2f}",
+                    f"{r_uni_obs:.2f} / {r_uni_th:.2f}",
                     f"{exec_time_ms:.2f}",
                     f"{complexite_observee:.6f} ms/n²"
                 ),
@@ -1330,6 +1359,8 @@ class ModernMatchingApp:
                 fieldnames = [
                     "Test", "Répétition", "Nb_Étudiants", "Nb_Établissements", 
                     "Satisfaction_Étudiants", "Satisfaction_Établissements", 
+                    "RangMoyen_Etudiants_Obs", "RangMoyen_Etudiants_Theorique",
+                    "RangMoyen_Universites_Obs", "RangMoyen_Universites_Theorique",
                     "Non_Affectés", "Temps_Execution_ms", "Complexite_Theorique", "Complexite_Observee",
                     "Timestamp"
                 ]
@@ -1344,6 +1375,10 @@ class ModernMatchingApp:
                         "Nb_Établissements": result["nb_universities"],
                         "Satisfaction_Étudiants": f"{result['sat_students']:.4f}",
                         "Satisfaction_Établissements": f"{result['sat_universities']:.4f}",
+                        "RangMoyen_Etudiants_Obs": f"{result.get('r_etu_obs', 0):.4f}",
+                        "RangMoyen_Etudiants_Theorique": f"{result.get('r_etu_th', 0):.4f}",
+                        "RangMoyen_Universites_Obs": f"{result.get('r_uni_obs', 0):.4f}",
+                        "RangMoyen_Universites_Theorique": f"{result.get('r_uni_th', 0):.4f}",
                         "Non_Affectés": result["nb_unassigned"],
                         "Temps_Execution_ms": f"{result['exec_time_ms']:.2f}",
                         "Complexite_Theorique": result["complexite_theorique"],
